@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { TextureGenerator } from '../textures/TextureGenerator.js';
 
 export class RoomPlayer {
   constructor(camera) {
@@ -39,12 +40,34 @@ export class RoomPlayer {
     this.camera.add(this.flashlight);
     this.camera.add(this.flashlight.target);
 
+    // Volumetric Atmospheric Flashlight Beam Cone
+    const beamGeo = new THREE.CylinderGeometry(0.035, 0.48, 4.2, 16, 1, true);
+    beamGeo.translate(0, 2.1, 0);
+    beamGeo.rotateX(Math.PI / 2);
+
+    const beamTex = TextureGenerator.createLightBeamTexture();
+    const beamMat = new THREE.MeshBasicMaterial({
+      map: beamTex,
+      color: 0xffeedd,
+      transparent: true,
+      opacity: 0.0,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      depthWrite: false
+    });
+    this.flashlightBeam = new THREE.Mesh(beamGeo, beamMat);
+    this.flashlightBeam.position.set(0.16, -0.14, -0.05);
+    this.camera.add(this.flashlightBeam);
+
     this.setupDesktopInputs();
   }
 
   toggleFlashlight() {
     this.isFlashlightOn = !this.isFlashlightOn;
-    this.flashlight.intensity = this.isFlashlightOn ? 3.2 : 0;
+    this.flashlight.intensity = this.isFlashlightOn ? 3.4 : 0;
+    if (this.flashlightBeam) {
+      this.flashlightBeam.material.opacity = this.isFlashlightOn ? 0.16 : 0.0;
+    }
     if (this.onFlashlightToggle) {
       this.onFlashlightToggle(this.isFlashlightOn);
     }

@@ -86,27 +86,44 @@ export const VHSShader = {
       float colB = texture2D(tDiffuse, uvB).b;
       vec3 color = vec3(colR, colG, colB);
 
+      // Interlaced field scanline comb jitter during threat/panic
+      if (uGlitchIntensity > 0.15) {
+        float field = mod(floor(uv.y * uResolution.y * 0.5), 2.0);
+        if (field > 0.5) {
+          vec2 jitterUV = uv + vec2(0.0025 * uGlitchIntensity * sin(uTime * 40.0), 0.0);
+          color = mix(color, texture2D(tDiffuse, jitterUV).rgb, 0.5);
+        }
+      }
+
       // Ultra-soft CRT scanlines
       float scanline = sin(uv.y * uResolution.y * 0.65) * 0.5 + 0.5;
       color -= scanline * uScanlinesIntensity * color;
 
-      // Analog grain
+      // Aperture Grille Phosphor Stripe Mask (RGB phosphor triads)
+      float subpixel = mod(uv.x * uResolution.x, 3.0);
+      vec3 mask = vec3(0.96);
+      if (subpixel < 1.0) mask = vec3(1.04, 0.97, 0.97);
+      else if (subpixel < 2.0) mask = vec3(0.97, 1.04, 0.97);
+      else mask = vec3(0.97, 0.97, 1.04);
+      color *= mask;
+
+      // Analog film grain
       float grain = (hash(uv * uResolution + fract(uTime * 21.3)) - 0.5) * (uGrainIntensity + uGlitchIntensity * 0.05);
       color += grain;
 
-      // CRT phosphor glass glow
+      // CRT phosphor glass ambient glow
       color += vec3(0.015, 0.02, 0.015);
 
-      // Analog phosphor halation on bright highlights (lights, sparks, filaments)
+      // Analog phosphor halation on bright highlights (lights, sparks, filaments, eyes)
       float lum = dot(color, vec3(0.299, 0.587, 0.114));
-      if (lum > 0.58) {
-        float bloom = (lum - 0.58) * 0.35;
-        color += vec3(bloom * 1.15, bloom * 0.95, bloom * 0.65);
+      if (lum > 0.55) {
+        float bloom = (lum - 0.55) * 0.42;
+        color += vec3(bloom * 1.2, bloom * 0.98, bloom * 0.68);
       }
 
-      // Soft vignette for CRT glass feel
-      float vignette = 1.0 - rDist * 0.25;
-      color *= clamp(vignette, 0.75, 1.0);
+      // Soft vignette for CRT curved glass depth
+      float vignette = 1.0 - rDist * 0.28;
+      color *= clamp(vignette, 0.72, 1.0);
 
       gl_FragColor = vec4(color, 1.0);
     }
