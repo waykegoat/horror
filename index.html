@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>ОБЪЕКТ 104 // НОЧНАЯ СМЕНА (00:00 - 06:00)</title>
+  <meta name="description" content="Психологический 3D-хоррор: выживание дежурного оператора с 00:00 до 06:00 в заброшенном комплексе Объект 104." />
+  <link rel="stylesheet" href="./src/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&family=Jost:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./vendor/three.module.js",
+      "three/addons/": "./src/postprocessing/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <!-- 3D WebGL Canvas Container -->
+  <div id="game-container">
+    <canvas id="webgl-canvas"></canvas>
+  </div>
+
+  <!-- CRT Monitor Glass Distortion & Scanlines Layer -->
+  <div id="crt-overlay-effects" class="crt-overlay-effects">
+    <div class="crt-scanlines"></div>
+    <div class="crt-flicker"></div>
+    <div class="crt-glare"></div>
+  </div>
+
+  <!-- IN-GAME DIEGETIC HUD (Visible during gameplay) -->
+  <div id="game-hud" class="game-hud hidden">
+    <!-- Top CCTV Status & Shift Clock -->
+    <div class="hud-top-bar">
+      <div class="cctv-tag">
+        <span class="rec-dot"></span>
+        <span class="rec-text">LIVE ● REC</span>
+        <span class="cam-name">КАМЕРА 01 // ПОСТ 4</span>
+      </div>
+
+      <!-- Main Night Shift Clock 00:00 -> 06:00 -->
+      <div class="shift-clock-box">
+        <div class="clock-label">ВРЕМЯ СМЕНЫ</div>
+        <div class="clock-main">
+          <span id="hud-clock">00:00</span>
+          <span class="clock-target">/ 06:00</span>
+        </div>
+        <div class="shift-progress-bar">
+          <div id="shift-progress-fill" class="progress-fill" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <!-- Threat Level Barometer -->
+      <div class="threat-box">
+        <div class="threat-header">
+          <span>УРОВЕНЬ УГРОЗЫ</span>
+          <span id="threat-percent">0%</span>
+        </div>
+        <div class="threat-meter" id="threat-meter">
+          <div class="threat-seg" data-idx="1"></div>
+          <div class="threat-seg" data-idx="2"></div>
+          <div class="threat-seg" data-idx="3"></div>
+          <div class="threat-seg" data-idx="4"></div>
+          <div class="threat-seg" data-idx="5"></div>
+          <div class="threat-seg" data-idx="6"></div>
+          <div class="threat-seg" data-idx="7"></div>
+          <div class="threat-seg" data-idx="8"></div>
+          <div class="threat-seg" data-idx="9"></div>
+          <div class="threat-seg" data-idx="10"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center Reticle & Floating Context Interaction Prompt -->
+    <div class="hud-center">
+      <div id="reticle" class="reticle">
+        <span class="reticle-bracket top-left"></span>
+        <span class="reticle-bracket top-right"></span>
+        <span class="reticle-dot"></span>
+        <span class="reticle-bracket bottom-left"></span>
+        <span class="reticle-bracket bottom-right"></span>
+      </div>
+
+      <div id="interaction-prompt" class="interaction-prompt hidden">
+        <span class="key-badge">[E]</span>
+        <span id="interaction-text" class="action-text">ВЫКЛЮЧИТЬ ТЕЛЕВИЗОР</span>
+      </div>
+    </div>
+
+    <!-- Bottom Tactical Status Panel (Checklist for anomalies) -->
+    <div class="hud-bottom-bar">
+      <div class="station-status-panel">
+        <div class="panel-header">РЕГЛАМЕНТ ДЕЖУРНОГО ОПЕРАТОРА</div>
+        <div class="sensor-grid">
+          <div class="sensor-card" id="sensor-tv">
+            <span class="sensor-icon">📺</span>
+            <span class="sensor-title">ТВ "РУБИН"</span>
+            <span id="badge-tv" class="sensor-badge badge-normal">ВЫКЛЮЧЕН</span>
+          </div>
+
+          <div class="sensor-card" id="sensor-window">
+            <span class="sensor-icon">🪟</span>
+            <span class="sensor-title">ОКНО В САД</span>
+            <span id="badge-window" class="sensor-badge badge-normal">ШТОРЫ [OK]</span>
+          </div>
+
+          <div class="sensor-card" id="sensor-door">
+            <span class="sensor-icon">🚪</span>
+            <span class="sensor-title">ГЕРМОДВЕРЬ</span>
+            <span id="badge-door" class="sensor-badge badge-normal">ЗАСОВ [OK]</span>
+          </div>
+
+          <div class="sensor-card" id="sensor-fuse">
+            <span class="sensor-icon">⚡</span>
+            <span class="sensor-title">ЭЛЕКТРОЩИТОК</span>
+            <span id="badge-fuse" class="sensor-badge badge-normal">220V [OK]</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hint-key-guide">
+        <span>[WASD] Передвижение</span>
+        <span>[МЫШЬ] Оглядеться</span>
+        <span>[E] Действие</span>
+        <span>[ESC] Меню</span>
+      </div>
+    </div>
+
+    <!-- Heartbeat & Critical Red Vignette -->
+    <div id="danger-vignette" class="danger-vignette"></div>
+
+    <!-- Subtitle / Notification Box -->
+    <div id="subtitles" class="subtitles hidden"></div>
+  </div>
+
+  <!-- Mobile Controls (Touch screens) -->
+  <div id="mobile-controls" class="mobile-controls">
+    <div id="touch-joystick-zone" class="touch-zone">
+      <div id="joystick-base" class="joystick-base">
+        <div id="joystick-thumb" class="joystick-thumb"></div>
+      </div>
+    </div>
+    <div id="touch-actions" class="touch-actions">
+      <button id="btn-interact" class="mobile-btn" aria-label="Interact">E</button>
+    </div>
+  </div>
+
+  <!-- 3D SURVEILLANCE CONSOLE / TERMINAL UI OVERLAY (Main Menu, Rules, Settings, Pause, GameOver, Victory) -->
+  <div id="crt-terminal-container" class="terminal-perspective-container">
+    <div id="crt-chassis" class="crt-hardware-chassis">
+      
+      <!-- Top Hardware Bezel Header -->
+      <div class="chassis-top-bezel">
+        <div class="screw screw-tl"></div>
+        <div class="hardware-brand-plate">
+          <span class="brand-logo">★</span>
+          <span class="brand-text">КОМПЛЕКС "ДОЗОР-4" // СИСТЕМА ОХРАНЫ ОБЪЕКТА 104</span>
+        </div>
+        <div class="hardware-leds">
+          <div class="led-item">
+            <span class="led-bulb led-green active" id="led-power"></span>
+            <span class="led-text">СЕТЬ</span>
+          </div>
+          <div class="led-item">
+            <span class="led-bulb led-red" id="led-alarm"></span>
+            <span class="led-text">ТРЕВОГА</span>
+          </div>
+        </div>
+        <div class="screw screw-tr"></div>
+      </div>
+
+      <!-- Recessed Curved CRT Screen Display Frame -->
+      <div id="crt-screen-frame" class="crt-screen-recessed">
+        <div class="crt-glass-curvature"></div>
+        <div class="crt-screen-phosphor">
+
+          <!-- 1. MAIN MENU SCREEN -->
+          <div id="screen-main-menu" class="terminal-screen-view">
+            <div class="view-header">
+              <div class="doc-code">АРХИВ МВД СССР // СЕКРЕТНО // ОКТЯБРЬ 1994</div>
+              <div class="sys-clock" id="menu-sys-time">23:59:00</div>
+            </div>
+
+            <div class="title-container">
+              <h1 class="main-title glitch-text" data-text="НОЧНАЯ СМЕНА">НОЧНАЯ СМЕНА</h1>
+              <div class="title-sub">ОБЪЕКТ 104: ПОСТ НАБЛЮДАТЕЛЯ №4</div>
+              <div class="shift-time-badge">00:00 — 06:00 // ПРОТОКОЛ ВЫЖИВАНИЯ</div>
+            </div>
+
+            <div class="terminal-brief">
+              <p>
+                Вы заступили на ночное дежурство в изолированном медицинском блоке.<br>
+                По радио доложено о присутствии агрессивной аномальной сущности в секторе.<br>
+                <strong>Ваша задача:</strong> контролировать кабинет и дожить до утра <strong>06:00</strong>.
+              </p>
+            </div>
+
+            <!-- Terminal Navigation Menu Buttons -->
+            <div class="terminal-btn-group">
+              <button id="btn-start-shift" class="term-btn term-btn-primary">
+                <span class="btn-icon">▶</span>
+                <span class="btn-caption">ЗАСТУПИТЬ НА СМЕНУ [00:00 - 06:00]</span>
+              </button>
+
+              <button id="btn-open-rules" class="term-btn term-btn-secondary">
+                <span class="btn-icon">📋</span>
+                <span class="btn-caption">РЕГЛАМЕНТ БЕЗОПАСНОСТИ (ПРАВИЛА)</span>
+              </button>
+
+              <button id="btn-open-lore" class="term-btn term-btn-secondary">
+                <span class="btn-icon">📼</span>
+                <span class="btn-caption">ЖУРНАЛ ПРЕДЫДУЩЕГО ДЕЖУРНОГО</span>
+              </button>
+
+              <button id="btn-open-settings" class="term-btn term-btn-secondary">
+                <span class="btn-icon">⚙️</span>
+                <span class="btn-caption">НАСТРОЙКИ СИСТЕМЫ</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 2. PROTOCOL / SURVIVAL RULES TAB -->
+          <div id="screen-rules" class="terminal-screen-view hidden">
+            <div class="view-header">
+              <div class="doc-code">ИНСТРУКЦИЯ ПО ВЫЖИВАНИЮ ДЛЯ ДЕЖУРНОГО</div>
+              <button class="btn-back-menu" data-back="main">[ НАЗАД В МЕНЮ ]</button>
+            </div>
+
+            <div class="rules-scrollable-container">
+              <div class="rule-card">
+                <div class="rule-icon-box">📺</div>
+                <div class="rule-content">
+                  <div class="rule-name">1. ТЕЛЕВИЗОР "РУБИН" (СПОНТАННАЯ АКТИВАЦИЯ)</div>
+                  <p>Телевизор включается сам, издавая пронзительный белый шум. На экране проявляется силуэт сущности. Если не выключить его вовремя, существо вырвется в комнату.</p>
+                  <div class="rule-action">Действие: подойдите к ТВ и нажмите <strong>[E]</strong>, чтобы выключить.</div>
+                </div>
+              </div>
+
+              <div class="rule-card">
+                <div class="rule-icon-box">🪟</div>
+                <div class="rule-content">
+                  <div class="rule-name">2. ОКНО ВО ДВОР (СКРЕЖЕТ ПО СТЕКЛУ)</div>
+                  <p>В темноте за окном появляется высокая тень с горящими глазами и скребет когтями стекло. Если существо видит вас через открытые шторы более 15 секунд — окно будет разбито.</p>
+                  <div class="rule-action">Действие: подойдите к окну и нажмите <strong>[E]</strong>, чтобы закрыть тяжелые шторы.</div>
+                </div>
+              </div>
+
+              <div class="rule-card">
+                <div class="rule-icon-box">🚪</div>
+                <div class="rule-content">
+                  <div class="rule-name">3. ВХОДНАЯ ДВЕРЬ (ТЯЖЕЛЫЕ УДАРЫ)</div>
+                  <p>Из темного коридора раздаются яростные удары в дверь. Сущность пытается выбить полотно. Обычная защелка не выдержит.</p>
+                  <div class="rule-action">Действие: подбегите к двери и поверните стальной засов <strong>[E]</strong>.</div>
+                </div>
+              </div>
+
+              <div class="rule-card">
+                <div class="rule-icon-box">⚡</div>
+                <div class="rule-content">
+                  <div class="rule-name">4. ЭЛЕКТРОЩИТОК (ИСКРЫ И СБОЙ СЕТИ)</div>
+                  <p>Перегрузка электросети вызывает сильные искры, свет в комнате начинает судорожно мерцать и гаснуть. В темноте вы беззащитны.</p>
+                  <div class="rule-action">Действие: подойдите к щитку на стене и перезапустите тумблер <strong>[E]</strong>.</div>
+                </div>
+              </div>
+            </div>
+
+            <button class="term-btn term-btn-primary btn-back-menu" data-back="main">
+              ПОНЯТНО, ВЕРНУТЬСЯ В ГЛАВНОЕ МЕНЮ
+            </button>
+          </div>
+
+          <!-- 3. INCIDENT LORE LOG TAB -->
+          <div id="screen-lore" class="terminal-screen-view hidden">
+            <div class="view-header">
+              <div class="doc-code">МАГНИТНАЯ ЛЕНТА // АКТ № 404-B // ДЕЖУРНЫЙ СМИРНОВ А.В.</div>
+              <button class="btn-back-menu" data-back="main">[ НАЗАД В МЕНЮ ]</button>
+            </div>
+
+            <div class="lore-box">
+              <div class="lore-entry">
+                <span class="lore-stamp">[01:15]</span>
+                <p>«...В коридоре снова слышны тяжелые, влажные шаги. Телевизор "Рубин" щелкнул и загорелся синим шумом сам по себе. Мне показалось, что сквозь помехи кто-то пристально смотрит на меня изнутри кинескопа... Я выключил его тумблером, и звуки стихли...»</p>
+              </div>
+              <div class="lore-entry">
+                <span class="lore-stamp">[03:40]</span>
+                <p>«...Что-то длинное и тощее царапает стекло со стороны старого сада. Там глухая стена и третий этаж, нормальный человек не может там стоять. Задернул бархатные шторы — оно забило по раме и отступило...»</p>
+              </div>
+              <div class="lore-entry">
+                <span class="lore-stamp">[04:55]</span>
+                <p>«...Электрощиток искрит, свет проседает. Если вырубится люстра, засов на двери не удержит. Главное правило — никогда не оставлять аномалию без внимания. Нужно продержаться до 06:00, когда взойдет утреннее солнце...»</p>
+              </div>
+            </div>
+
+            <button class="term-btn term-btn-primary btn-back-menu" data-back="main">
+              ВЕРНУТЬСЯ В МЕНЮ
+            </button>
+          </div>
+
+          <!-- 4. SETTINGS TAB -->
+          <div id="screen-settings" class="terminal-screen-view hidden">
+            <div class="view-header">
+              <div class="doc-code">ПАРАМЕТРЫ СИСТЕМЫ И ДИСПЛЕЯ</div>
+              <button class="btn-back-menu" data-back="main">[ НАЗАД В МЕНЮ ]</button>
+            </div>
+
+            <div class="settings-grid">
+              <div class="setting-item">
+                <span class="set-label">ЗВУКОВАЯ СИСТЕМА:</span>
+                <button id="btn-sound-toggle" class="term-btn term-btn-secondary">ЗВУК: ВКЛЮЧЕН</button>
+              </div>
+
+              <div class="setting-item">
+                <span class="set-label">РЕЖИМ ОТОБРАЖЕНИЯ:</span>
+                <button id="btn-fullscreen-toggle" class="term-btn term-btn-secondary">НА ВЕСЬ ЭКРАН</button>
+              </div>
+
+              <div class="setting-item">
+                <span class="set-label">3D-ПЕРСПЕКТИВА ТЕРМИНАЛА:</span>
+                <button id="btn-3d-tilt-toggle" class="term-btn term-btn-secondary">3D НАКЛОН: ВКЛ</button>
+              </div>
+            </div>
+
+            <button class="term-btn term-btn-primary btn-back-menu" data-back="main">
+              СОХРАНИТЬ И ВЕРНУТЬСЯ
+            </button>
+          </div>
+
+          <!-- 5. PAUSE MENU SCREEN -->
+          <div id="screen-pause" class="terminal-screen-view hidden">
+            <div class="view-header">
+              <div class="doc-code">СМЕНА ПРИОСТАНОВЛЕНА // РЕЖИМ ОЖИДАНИЯ</div>
+            </div>
+
+            <div class="title-container">
+              <h2 class="pause-title">ДЕЖУРСТВО НА ПАУЗЕ</h2>
+              <p>Нажмите [ESC] или кнопку ниже для возврата на пост.</p>
+            </div>
+
+            <div class="terminal-btn-group">
+              <button id="btn-pause-resume" class="term-btn term-btn-primary">
+                ПРОДОЛЖИТЬ ДЕЖУРСТВО
+              </button>
+              <button id="btn-pause-restart" class="term-btn term-btn-secondary">
+                НАЧАТЬ СМЕНУ ЗАНОВО [С 00:00]
+              </button>
+            </div>
+          </div>
+
+          <!-- 6. GAME OVER SCREEN -->
+          <div id="screen-gameover" class="terminal-screen-view hidden death-view">
+            <div class="view-header">
+              <div class="doc-code alert-code">ТРЕВОГА // СИГНАЛ ПРЕРВАН // СМЕНА ПРОВАЛЕНА</div>
+            </div>
+
+            <div class="death-content">
+              <div class="static-badge">NO CARRIER // LOSS OF LIFE DETECTED</div>
+              <h2 class="death-heading glitch-text" data-text="СВЯЗЬ ПОТЕРЯНА">СВЯЗЬ ПОТЕРЯНА</h2>
+              <p id="death-reason-text" class="death-reason">
+                Аномалия заполнила кабинет. Дежурный не ответил на вызов.
+              </p>
+
+              <div class="stats-card">
+                <div>ВРЕМЯ ПРЕРЫВАНИЯ: <span id="death-time-stat" class="stat-highlight">03:42</span></div>
+                <div>УСТРАНЕНО АНОМАЛИЙ: <span id="death-cleared-stat" class="stat-highlight">4</span></div>
+              </div>
+
+              <button id="btn-gameover-restart" class="term-btn term-btn-primary">
+                ПОВТОРИТЬ СМЕНУ [ЗАНОВО С 00:00]
+              </button>
+            </div>
+          </div>
+
+          <!-- 7. VICTORY SCREEN (06:00 REACHED) -->
+          <div id="screen-victory" class="terminal-screen-view hidden victory-view">
+            <div class="view-header">
+              <div class="doc-code victory-code">06:00:00 // УТРЕННЯЯ ЗАРЯ // СМЕНА ЗАВЕРШЕНА</div>
+            </div>
+
+            <div class="victory-content">
+              <div class="sunrise-badge">☀ ВЫ ДОЖИЛИ ДО УТРА ☀</div>
+              <h2 class="victory-heading">СМЕНА ВЫПОЛНЕНА!</h2>
+              <p class="victory-narrative">
+                Первые лучи солнца осветили яблоневый сад за окном.<br>
+                Шорохи в вентиляции и шаги в коридоре затихли. Сущность отступила во тьму.<br>
+                Вы успешно сохранили контроль над постом до прихода дневной смены.
+              </p>
+
+              <div class="stats-card victory-stats-card">
+                <div class="stat-row">
+                  <span>ОБЩЕЕ ВРЕМЯ НА ПОСТУ:</span>
+                  <strong class="stat-val">00:00 — 06:00 (ПОЛНАЯ СМЕНА)</strong>
+                </div>
+                <div class="stat-row">
+                  <span>НЕЙТРАЛИЗОВАНО АНОМАЛИЙ:</span>
+                  <strong class="stat-val" id="victory-anomalies-stat">12</strong>
+                </div>
+                <div class="stat-row">
+                  <span>ПРИСВОЕННАЯ КВАЛИФИКАЦИЯ:</span>
+                  <strong class="stat-val grade-gold">ОПЕРАТОР 1-ГО КЛАССА [ОТЛИЧНО]</strong>
+                </div>
+              </div>
+
+              <button id="btn-victory-restart" class="term-btn term-btn-primary">
+                ЗАСТУПИТЬ НА СЛЕДУЮЩУЮ СМЕНУ
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Bottom Hardware Bezel with Ventilation & Knobs -->
+      <div class="chassis-bottom-bezel">
+        <div class="screw screw-bl"></div>
+        <div class="vent-grille">
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div class="control-dials">
+          <div class="dial-item">
+            <div class="dial-knob"></div>
+            <span class="dial-label">ЯРКОСТЬ</span>
+          </div>
+          <div class="dial-item">
+            <div class="dial-knob"></div>
+            <span class="dial-label">КОНТРАСТ</span>
+          </div>
+        </div>
+        <div class="screw screw-br"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
