@@ -327,31 +327,124 @@ export class HorrorAudio {
     osc2.stop(now + 1.2);
   }
 
+  // --- Blackout Power Down Sound ---
+  playBlackoutPowerDown() {
+    if (!this.ctx || !this.masterGain || this.isMuted) return;
+
+    const now = this.ctx.currentTime;
+
+    // Heavy relay click
+    const click = this.ctx.createOscillator();
+    const clickGain = this.ctx.createGain();
+    click.type = 'triangle';
+    click.frequency.setValueAtTime(220, now);
+    click.frequency.exponentialRampToValueAtTime(40, now + 0.08);
+    clickGain.gain.setValueAtTime(0.5, now);
+    clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+    click.connect(clickGain);
+    clickGain.connect(this.masterGain);
+    click.start(now);
+    click.stop(now + 0.1);
+
+    // Power turbine spool-down whine
+    const whine = this.ctx.createOscillator();
+    const whineGain = this.ctx.createGain();
+    whine.type = 'sawtooth';
+    whine.frequency.setValueAtTime(440, now);
+    whine.frequency.exponentialRampToValueAtTime(30, now + 1.6);
+    whineGain.gain.setValueAtTime(0.3, now);
+    whineGain.gain.exponentialRampToValueAtTime(0.001, now + 1.65);
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(800, now);
+    filter.frequency.exponentialRampToValueAtTime(120, now + 1.6);
+
+    whine.connect(filter);
+    filter.connect(whineGain);
+    whineGain.connect(this.masterGain);
+    whine.start(now);
+    whine.stop(now + 1.7);
+  }
+
+  // --- Glass Shatter Sound (Window Breach) ---
+  playGlassShatter() {
+    if (!this.ctx || !this.masterGain || this.isMuted) return;
+
+    const now = this.ctx.currentTime;
+    for (let i = 0; i < 8; i++) {
+      const t = now + Math.random() * 0.18;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(2400 + Math.random() * 3000, t);
+      osc.frequency.exponentialRampToValueAtTime(300, t + 0.25);
+
+      gain.gain.setValueAtTime(0.35, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(t);
+      osc.stop(t + 0.32);
+    }
+  }
+
+  // --- Metal Door Slam / Break-in Sound ---
+  playMetalGateSlam() {
+    if (!this.ctx || !this.masterGain || this.isMuted) return;
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(80, now);
+    osc.frequency.exponentialRampToValueAtTime(18, now + 0.4);
+
+    gain.gain.setValueAtTime(0.7, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(now);
+    osc.stop(now + 0.48);
+  }
+
   setThreatLevel(threat) {
     this.threatLevel = Math.max(0, Math.min(1, threat));
   }
 
   startHeartbeatSystem() {
     const tick = () => {
-      if (this.threatLevel > 0.4 && this.ctx && !this.isMuted) {
+      if (this.threatLevel > 0.35 && this.ctx && !this.isMuted) {
         const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
 
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(55, now);
-        osc.frequency.exponentialRampToValueAtTime(25, now + 0.12);
+        // Double thud: lub-dub
+        const playThud = (timeOffset, freq, vol) => {
+          const t = now + timeOffset;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
 
-        gain.gain.setValueAtTime(this.threatLevel * 0.4, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, t);
+          osc.frequency.exponentialRampToValueAtTime(20, t + 0.11);
 
-        osc.connect(gain);
-        gain.connect(this.masterGain);
-        osc.start(now);
-        osc.stop(now + 0.14);
+          gain.gain.setValueAtTime(this.threatLevel * vol, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+
+          osc.connect(gain);
+          gain.connect(this.masterGain);
+          osc.start(t);
+          osc.stop(t + 0.13);
+        };
+
+        playThud(0, 58, 0.45);      // lub
+        playThud(0.12, 48, 0.35);   // dub
       }
 
-      const bpm = 60 + this.threatLevel * 80;
+      const bpm = 65 + this.threatLevel * 105;
       const interval = 60 / bpm;
       this.heartbeatTimer = setTimeout(tick, interval * 1000);
     };

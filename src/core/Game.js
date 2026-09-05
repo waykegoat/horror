@@ -330,6 +330,7 @@ export class Game {
       if (!this.room.isCurtainClosed) {
         this.activeAnomalies.window += delta;
         if (this.activeAnomalies.window > 9.0) {
+          this.audio.playGlassShatter();
           this.triggerJumpscareGameOver('Сущность за окном разбила стекло и утащила оператора в темноту...', new THREE.Vector3(-2.8, 1.6, 0));
           return;
         }
@@ -346,6 +347,7 @@ export class Game {
       if (!this.room.isDoorLatched) {
         this.activeAnomalies.door += delta;
         if (this.activeAnomalies.door > 8.5) {
+          this.audio.playMetalGateSlam();
           this.triggerJumpscareGameOver('Дверь сорвало с петель. Незапертый засов не остановил монстра...', new THREE.Vector3(0, 1.3, -3.0));
           return;
         }
@@ -363,6 +365,7 @@ export class Game {
       // Blackout triggered!
       if (this.activeAnomalies.fuse > 4.0 && !this.room.isBlackout) {
         this.room.isBlackout = true;
+        this.audio.playBlackoutPowerDown();
         this.player.triggerCameraShake(0.6);
         this.showSubtitle('🚨 БЛЭКАУТ! Свет полностью погас! Срочно восстановите щиток [E]!', 4000);
       }
