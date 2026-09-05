@@ -17,9 +17,12 @@ export class RoomPlayer {
     // Mobile touch input support
     this.touchMove = new THREE.Vector2(0, 0);
 
-    // Subtle immersive head bobbing
+    // Camera bobbing & trauma shake
     this.headBobTimer = 0;
     this.baseCameraY = 1.7;
+    this.shakeIntensity = 0;
+
+    this.onMouseMove = null;
 
     this.setupDesktopInputs();
   }
@@ -38,8 +41,16 @@ export class RoomPlayer {
         this.yaw -= e.movementX * this.mouseSensitivity;
         this.pitch -= e.movementY * this.mouseSensitivity;
         this.pitch = Math.max(-Math.PI * 0.42, Math.min(Math.PI * 0.42, this.pitch));
+
+        if (this.onMouseMove) {
+          this.onMouseMove(e.movementX, e.movementY);
+        }
       }
     });
+  }
+
+  triggerCameraShake(amount) {
+    this.shakeIntensity = Math.min(1.0, this.shakeIntensity + amount);
   }
 
   update(delta) {
@@ -86,7 +97,20 @@ export class RoomPlayer {
       this.position.y = THREE.MathUtils.lerp(this.position.y, this.baseCameraY, delta * 8);
     }
 
-    this.camera.position.copy(this.position);
-    this.camera.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
+    // Camera shake decay
+    let shakeX = 0;
+    let shakeY = 0;
+    if (this.shakeIntensity > 0.001) {
+      shakeX = (Math.random() - 0.5) * 0.08 * this.shakeIntensity;
+      shakeY = (Math.random() - 0.5) * 0.08 * this.shakeIntensity;
+      this.shakeIntensity = THREE.MathUtils.lerp(this.shakeIntensity, 0, delta * 4.0);
+    }
+
+    this.camera.position.set(
+      this.position.x + shakeX,
+      this.position.y + shakeY,
+      this.position.z
+    );
+    this.camera.rotation.set(this.pitch + shakeY * 0.5, this.yaw + shakeX * 0.5, 0, 'YXZ');
   }
 }
