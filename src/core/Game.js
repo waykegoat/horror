@@ -108,6 +108,29 @@ export class Game {
       this.audio.playTabletHolster(isInspecting);
       this.showSubtitle(isInspecting ? 'Планшет поднят [TAB/Q]' : 'Планшет опущен [TAB/Q]', 1200);
     };
+
+    this.player.onFootstep = () => {
+      this.audio.playFootstepCreak();
+    };
+
+    this.room.onLightningStrike = () => {
+      const isClose = Math.random() > 0.45;
+      this.audio.playThunderClap(isClose ? 1.0 : 2.4);
+      if (isClose) {
+        this.player.triggerCameraShake(0.32);
+      }
+    };
+
+    this.room.onRadioChange = (channel) => {
+      this.audio.setRadioChannel(channel);
+      const names = [
+        'Радио Р-326: ВЫКЛ',
+        'Р-326: Частота 4625 кГц (Маркер УВБ-76 "Жужжалка")',
+        'Р-326: Частота 500 кГц (Аварийный сигнал Морзе SOS)',
+        'Р-326: Частота 12.4 МГц (Атмосферный шум эфира)'
+      ];
+      this.showSubtitle(names[channel], 3000);
+    };
   }
 
   // --- SPATIAL 3D WORLD MARKERS OVER INTERACTIVE OBJECTS ---
@@ -541,6 +564,8 @@ export class Game {
         this.anomaliesCleared++;
         this.showSubtitle('Щиток перезапущен. Электросеть стабилизирована.', 3000);
       }
+    } else if (item.id === 'radio') {
+      this.room.cycleRadio();
     }
 
     this.updateHUDChecklist();

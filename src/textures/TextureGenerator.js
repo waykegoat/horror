@@ -718,7 +718,7 @@ export class TextureGenerator {
     return canvas;
   }
 
-  static drawWindow(canvas, state) {
+  static drawWindow(canvas, state, time = 0, lightningVal = 0) {
     const ctx = canvas.getContext('2d');
     const w = canvas.width;
     const h = canvas.height;
@@ -751,50 +751,78 @@ export class TextureGenerator {
       return;
     }
 
-    // Night Outside
-    ctx.fillStyle = '#05090d';
-    ctx.fillRect(0, 0, w, h);
+    // 1. Night Sky Background with dynamic storm clouds & lightning
+    if (lightningVal > 0.05) {
+      // Lightning flash sky
+      const flashGrad = ctx.createLinearGradient(0, 0, 0, h);
+      const intensity = Math.min(1.0, lightningVal);
+      flashGrad.addColorStop(0, `rgba(210, 230, 255, ${0.75 * intensity})`);
+      flashGrad.addColorStop(0.4, `rgba(140, 175, 220, ${0.65 * intensity})`);
+      flashGrad.addColorStop(1, `rgba(40, 60, 90, ${0.85 * intensity})`);
+      ctx.fillStyle = flashGrad;
+      ctx.fillRect(0, 0, w, h);
 
-    const moonGrad = ctx.createRadialGradient(w * 0.72, h * 0.22, 10, w * 0.72, h * 0.22, 190);
-    moonGrad.addColorStop(0, 'rgba(180, 215, 255, 0.45)');
-    moonGrad.addColorStop(1, 'rgba(5, 9, 13, 0)');
-    ctx.fillStyle = moonGrad;
-    ctx.fillRect(0, 0, w, h);
+      // Distant jagged lightning bolt
+      if (lightningVal > 0.3) {
+        ctx.strokeStyle = `rgba(255, 255, 255, ${Math.min(1.0, lightningVal * 1.2)})`;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        let lx = w * 0.35;
+        let ly = 10;
+        ctx.moveTo(lx, ly);
+        while (ly < h * 0.5) {
+          lx += (Math.random() - 0.5) * 28;
+          ly += 18 + Math.random() * 20;
+          ctx.lineTo(lx, ly);
+        }
+        ctx.stroke();
+      }
+    } else {
+      // Deep stormy midnight sky
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, h);
+      skyGrad.addColorStop(0, '#03060a');
+      skyGrad.addColorStop(0.6, '#060a12');
+      skyGrad.addColorStop(1, '#09101c');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, w, h);
 
-    // Pine trees
-    ctx.fillStyle = '#020407';
-    for (let t = 0; t < 6; t++) {
-      const tx = t * 95 + 15;
+      // Faint cold moon glow through dense storm clouds
+      const moonGrad = ctx.createRadialGradient(w * 0.72, h * 0.22, 10, w * 0.72, h * 0.22, 190);
+      moonGrad.addColorStop(0, 'rgba(160, 205, 250, 0.35)');
+      moonGrad.addColorStop(0.5, 'rgba(80, 110, 150, 0.1)');
+      moonGrad.addColorStop(1, 'rgba(3, 6, 10, 0)');
+      ctx.fillStyle = moonGrad;
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    // 2. Silhouetted Pine Forest
+    ctx.fillStyle = lightningVal > 0.1 ? '#010305' : '#04070c';
+    for (let t = 0; t < 7; t++) {
+      const tx = t * 85 - 15;
+      const treeH = h * (0.35 + (t % 3) * 0.08);
       ctx.beginPath();
       ctx.moveTo(tx, h);
-      ctx.lineTo(tx + 45, h * 0.38);
-      ctx.lineTo(tx + 90, h);
+      ctx.lineTo(tx + 42, h - treeH);
+      ctx.lineTo(tx + 84, h);
       ctx.fill();
     }
 
-    // Rain drips
-    ctx.strokeStyle = 'rgba(180, 200, 230, 0.25)';
-    ctx.lineWidth = 1.5;
-    for (let r = 0; r < 24; r++) {
-      const rx = (r * 37) % w;
-      const ry = (r * 53) % (h - 80);
-      ctx.beginPath();
-      ctx.moveTo(rx, ry);
-      ctx.lineTo(rx + 2, ry + 26);
-      ctx.stroke();
-    }
-
+    // 3. Paranormal Monster Apparition Outside Window
     if (state === true) {
-      // Monster peering through window
-      ctx.fillStyle = '#0b0f14';
+      // Menacing towering shadow
+      ctx.fillStyle = lightningVal > 0.1 ? '#000000' : '#080c10';
       ctx.beginPath();
       ctx.ellipse(w / 2, h * 0.52, 85, 130, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillRect(w / 2 - 90, h * 0.7, 180, h * 0.3);
 
-      ctx.fillStyle = '#ff2222';
+      // Long skeletal shoulders & neck
+      ctx.fillRect(w / 2 - 50, h * 0.42, 100, 70);
+
+      // Piercing glowing red eyes with intense inner core
+      ctx.fillStyle = '#ff1111';
       ctx.shadowColor = '#ff0000';
-      ctx.shadowBlur = 20;
+      ctx.shadowBlur = 24;
       ctx.beginPath();
       ctx.arc(w / 2 - 28, h * 0.46, 14, 0, Math.PI * 2);
       ctx.arc(w / 2 + 28, h * 0.46, 14, 0, Math.PI * 2);
@@ -802,21 +830,65 @@ export class TextureGenerator {
 
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.arc(w / 2 - 28, h * 0.46, 4, 0, Math.PI * 2);
-      ctx.arc(w / 2 + 28, h * 0.46, 4, 0, Math.PI * 2);
+      ctx.arc(w / 2 - 28, h * 0.46, 4.5, 0, Math.PI * 2);
+      ctx.arc(w / 2 + 28, h * 0.46, 4.5, 0, Math.PI * 2);
       ctx.fill();
       ctx.shadowBlur = 0;
 
-      // Claw scratches
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
-      ctx.lineWidth = 3;
+      // Razor-sharp claw gouges across the window pane
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.lineWidth = 2.8;
       for (let c = 0; c < 4; c++) {
         ctx.beginPath();
-        ctx.moveTo(w / 2 - 50 + c * 32, h * 0.32);
-        ctx.lineTo(w / 2 - 30 + c * 32, h * 0.68);
+        ctx.moveTo(w / 2 - 55 + c * 34, h * 0.28);
+        ctx.lineTo(w / 2 - 32 + c * 34, h * 0.65);
         ctx.stroke();
       }
     }
+
+    // 4. Dynamic Animated Rain Rivulets & Condensation Water Beads
+    // Sliding streaks
+    ctx.strokeStyle = 'rgba(195, 220, 245, 0.32)';
+    ctx.lineWidth = 1.6;
+    for (let r = 0; r < 36; r++) {
+      const speed = 140 + (r % 6) * 45;
+      const ry = ((r * 71 + time * speed) % (h + 80)) - 40;
+      const rx = (r * 39 + Math.sin(ry * 0.05 + r) * 2.5) % w;
+      const len = 24 + (r % 5) * 8;
+
+      ctx.beginPath();
+      ctx.moveTo(rx, ry);
+      ctx.lineTo(rx + 1, ry + len);
+      ctx.stroke();
+
+      // Droplet head bead
+      ctx.fillStyle = 'rgba(220, 240, 255, 0.48)';
+      ctx.beginPath();
+      ctx.arc(rx + 1, ry + len, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Static condensed droplet beads on glass pane
+    for (let b = 0; b < 28; b++) {
+      const bx = (b * 97) % (w - 20) + 10;
+      const by = (b * 67) % (h - 20) + 10;
+      const br = 1.2 + (b % 4) * 0.6;
+      ctx.fillStyle = 'rgba(210, 235, 255, 0.35)';
+      ctx.beginPath();
+      ctx.arc(bx, by, br, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Specular glint
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.fillRect(bx - 0.5, by - 0.5, 1, 1);
+    }
+
+    // Frosted condensation edge vignette
+    const edgeGrad = ctx.createRadialGradient(w / 2, h / 2, w * 0.32, w / 2, h / 2, w * 0.52);
+    edgeGrad.addColorStop(0, 'rgba(100, 130, 160, 0)');
+    edgeGrad.addColorStop(1, 'rgba(40, 60, 85, 0.35)');
+    ctx.fillStyle = edgeGrad;
+    ctx.fillRect(0, 0, w, h);
   }
 
   /**

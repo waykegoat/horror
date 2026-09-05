@@ -53,6 +53,22 @@ export class RoomScene {
     this.chandelierBulb = null;
     this.filamentMesh = null;
 
+    // Outdoor Thunderstorm Lightning
+    this.lightningLight = null;
+    this.lightningTimer = 8.0;
+    this.lightningIntensity = 0;
+    this.lightningFlashStep = 0;
+    this.lastWindowUpdate = 0;
+    this.onLightningStrike = null;
+
+    // Soviet Military Shortwave Radio R-326
+    this.radioChannel = 0;
+    this.radioDialMesh = null;
+    this.radioDialCanvas = null;
+    this.radioDialCtx = null;
+    this.radioDialTex = null;
+    this.onRadioChange = null;
+
     // Particle Systems
     this.dustParticles = null;
     this.dustCoords = null;
@@ -84,6 +100,17 @@ export class RoomScene {
     this.emergencyRedLight = new THREE.PointLight(0xff1800, 0, 11, 1.8);
     this.emergencyRedLight.position.set(0, 2.9, 0);
     this.scene.add(this.emergencyRedLight);
+
+    // Outdoor Thunderstorm Lightning (casts room-spanning tree & window frame shadows)
+    this.lightningLight = new THREE.DirectionalLight(0xddeeff, 0);
+    this.lightningLight.position.set(-6.5, 3.2, 0);
+    this.lightningLight.target.position.set(0, 1.2, 0);
+    this.lightningLight.castShadow = true;
+    this.lightningLight.shadow.mapSize.width = 1024;
+    this.lightningLight.shadow.mapSize.height = 1024;
+    this.lightningLight.shadow.bias = -0.001;
+    this.scene.add(this.lightningLight);
+    this.scene.add(this.lightningLight.target);
 
     // Chandelier Ceiling Fixture (Cord, Cap, Socket, Bulb, Volumetric Beam)
     this.setupChandelierFixture();
@@ -802,6 +829,81 @@ export class RoomScene {
     screenMesh.rotation.y = -Math.PI / 6;
     deskGroup.add(screenMesh);
 
+    // Soviet Military Shortwave Radio Receiver "Р-326"
+    const radioGroup = new THREE.Group();
+    radioGroup.position.set(0.05, 0.89, -0.15);
+
+    const radioBodyMat = new THREE.MeshStandardMaterial({
+      color: 0x272e28,
+      metalness: 0.55,
+      roughness: 0.5
+    });
+    const radioBody = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.17, 0.2), radioBodyMat);
+    radioBody.castShadow = true;
+    radioGroup.add(radioBody);
+
+    // Backlit Analog Dial Window
+    this.radioDialCanvas = document.createElement('canvas');
+    this.radioDialCanvas.width = 128;
+    this.radioDialCanvas.height = 64;
+    this.radioDialCtx = this.radioDialCanvas.getContext('2d');
+    this.drawRadioDial('ВЫКЛ', false);
+
+    this.radioDialTex = new THREE.CanvasTexture(this.radioDialCanvas);
+    const dialMat = new THREE.MeshBasicMaterial({ map: this.radioDialTex });
+    this.radioDialMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 0.06), dialMat);
+    this.radioDialMesh.position.set(-0.151, 0.02, 0);
+    this.radioDialMesh.rotation.y = -Math.PI / 2;
+    radioGroup.add(this.radioDialMesh);
+
+    // Radio Knobs & Antenna
+    const rKnobMat = new THREE.MeshStandardMaterial({ color: 0x999999, metalness: 0.8, roughness: 0.25 });
+    const knobA = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.015, 12), rKnobMat);
+    knobA.rotation.z = Math.PI / 2;
+    knobA.position.set(-0.155, -0.04, -0.05);
+    radioGroup.add(knobA);
+
+    const knobB = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.015, 12), rKnobMat);
+    knobB.rotation.z = Math.PI / 2;
+    knobB.position.set(-0.155, -0.04, 0.05);
+    radioGroup.add(knobB);
+
+    const rAntenna = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.5, 8), rKnobMat);
+    rAntenna.position.set(0.08, 0.32, 0.07);
+    radioGroup.add(rAntenna);
+
+    // Vintage Bakelite Headphones Resting on Desk
+    const headphoneMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.6 });
+    const cupL = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.025, 12), headphoneMat);
+    cupL.position.set(-0.24, 0.815, 0.28);
+    cupL.rotation.x = Math.PI / 2;
+    deskGroup.add(cupL);
+
+    const cupR = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.025, 12), headphoneMat);
+    cupR.position.set(-0.15, 0.815, 0.28);
+    cupR.rotation.x = Math.PI / 2;
+    deskGroup.add(cupR);
+
+    const band = new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.004, 8, 16, Math.PI), headphoneMat);
+    band.position.set(-0.195, 0.835, 0.28);
+    band.rotation.y = Math.PI / 2;
+    deskGroup.add(band);
+
+    deskGroup.add(radioGroup);
+
+    // Add Radio Interactive Station
+    this.interactives.push({
+      id: 'radio',
+      name: 'Радиоприемник Р-326',
+      position: new THREE.Vector3(2.4, 0.95, -1.15),
+      getPrompt: () => {
+        const labels = ['[ВЫКЛ]', '[4625 kHz: УВБ-76]', '[SOS: МОРЗЕ]', '[ШУМ ЭФИРА]'];
+        return `ЧАСТОТА Р-326: ${labels[this.radioChannel]}`;
+      },
+      canInteract: () => true,
+      action: () => this.cycleRadio()
+    });
+
     // Office Chair
     const chairMat = new THREE.MeshStandardMaterial({ color: 0x3d2716, roughness: 0.8 });
     const chair = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.85, 0.55), chairMat);
@@ -810,6 +912,53 @@ export class RoomScene {
     this.scene.add(chair);
 
     this.scene.add(deskGroup);
+  }
+
+  drawRadioDial(text, isOn) {
+    if (!this.radioDialCtx) return;
+    const ctx = this.radioDialCtx;
+    const w = 128;
+    const h = 64;
+
+    ctx.fillStyle = isOn ? '#0d2215' : '#0a0d0b';
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.strokeStyle = isOn ? '#00ff66' : '#22442b';
+    ctx.lineWidth = 1;
+    for (let x = 12; x < 118; x += 10) {
+      ctx.beginPath();
+      ctx.moveTo(x, 22);
+      ctx.lineTo(x, 42);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = isOn ? '#00ff88' : '#336644';
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(text, w / 2, 16);
+
+    ctx.fillStyle = isOn ? '#ff2222' : '#661111';
+    ctx.fillRect(w / 2 - 1, 20, 2, 24);
+  }
+
+  cycleRadio() {
+    this.radioChannel = (this.radioChannel + 1) % 4;
+    const labels = ['ВЫКЛ', '4625 kHz', 'SOS 500', 'ШУМ 12.4'];
+    this.drawRadioDial(labels[this.radioChannel], this.radioChannel > 0);
+    if (this.radioDialTex) this.radioDialTex.needsUpdate = true;
+
+    if (this.onRadioChange) {
+      this.onRadioChange(this.radioChannel);
+    }
+    return this.radioChannel;
+  }
+
+  triggerLightning() {
+    this.lightningIntensity = 1.0;
+    this.lightningFlashStep = 1.0;
+    if (this.onLightningStrike) {
+      this.onLightningStrike();
+    }
   }
 
   setupSofaAndClock() {
@@ -1003,6 +1152,29 @@ export class RoomScene {
     if (gameData) {
       this.renderDeskTerminal(gameData, time);
       this.terminalTexture.needsUpdate = true;
+    }
+
+    // 6. Outdoor Thunderstorm Lightning & Rain on Window
+    this.lightningTimer -= delta;
+    if (this.lightningTimer <= 0) {
+      this.triggerLightning();
+      this.lightningTimer = 16.0 + Math.random() * 22.0;
+    }
+
+    if (this.lightningIntensity > 0.001) {
+      this.lightningFlashStep += delta * 16.0;
+      const strobe = (Math.sin(this.lightningFlashStep * 4.5) > 0 ? 1.0 : 0.25) * Math.exp(-this.lightningFlashStep * 0.35);
+      this.lightningIntensity = Math.max(0, strobe);
+      if (this.lightningLight) this.lightningLight.intensity = this.lightningIntensity * 5.2;
+    } else {
+      if (this.lightningLight) this.lightningLight.intensity = 0;
+    }
+
+    // Window Texture update (animated rain rivulets & lightning flash) throttled at ~20fps
+    if (time - this.lastWindowUpdate > 0.048) {
+      this.lastWindowUpdate = time;
+      TextureGenerator.drawWindow(this.windowCanvas, this.hasMonsterAtWindow, time, this.lightningIntensity);
+      this.windowTexture.needsUpdate = true;
     }
   }
 

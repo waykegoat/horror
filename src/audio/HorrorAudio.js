@@ -31,8 +31,12 @@ export class HorrorAudio {
       tv: null,
       door: null,
       window: null,
-      fuse: null
+      fuse: null,
+      radio: null
     };
+
+    this.radioInterval = null;
+    this.currentRadioChannel = 0;
   }
 
   createPanner(x, y, z) {
@@ -68,11 +72,12 @@ export class HorrorAudio {
       this.masterGain.gain.setValueAtTime(0.7, this.ctx.currentTime);
       this.masterGain.connect(this.ctx.destination);
 
-      // Initialize 3D Panners for spatial anomalies
+      // Initialize 3D Panners for spatial anomalies and props
       this.panners.tv = this.createPanner(0, 1.1, 2.8);
       this.panners.door = this.createPanner(0, 1.3, -3.2);
       this.panners.window = this.createPanner(-3.2, 1.6, 0);
       this.panners.fuse = this.createPanner(3.2, 1.6, 1.5);
+      this.panners.radio = this.createPanner(2.4, 1.0, -1.15);
 
       this.initRoomAmbience();
       this.startHeartbeatSystem();
@@ -511,6 +516,215 @@ export class HorrorAudio {
     gain.connect(this.panners.door || this.masterGain);
     osc.start(now);
     osc.stop(now + 0.48);
+  }
+
+  // --- Distant & Close Thunderclap with Sub-bass Roll ---
+  playThunderClap(distance = 1.0) {
+    if (!this.ctx || !this.masterGain || this.isMuted) return;
+    const now = this.ctx.currentTime;
+    const panner = this.panners.window || this.masterGain;
+
+    // 1. Initial high-frequency crackle / snap
+    const snapLen = Math.floor(this.ctx.sampleRate * 0.12);
+    const snapBuffer = this.ctx.createBuffer(1, snapLen, this.ctx.sampleRate);
+    const snapData = snapBuffer.getChannelData(0);
+    for (let i = 0; i < snapLen; i++) {
+      snapData[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.03));
+    }
+    const snapSrc = this.ctx.createBufferSource();
+    snapSrc.buffer = snapBuffer;
+
+    const snapFilter = this.ctx.createBiquadFilter();
+    snapFilter.type = 'highpass';
+    snapFilter.frequency.setValueAtTime(1400, now);
+
+    const snapGain = this.ctx.createGain();
+    snapGain.gain.setValueAtTime(0.32 / distance, now);
+    snapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
+
+    snapSrc.connect(snapFilter);
+    snapFilter.connect(snapGain);
+    snapGain.connect(panner);
+    snapSrc.start(now);
+
+    // 2. Long low-pass filtered sub-bass thunder rumble
+    const dur = 3.6;
+    const rumbleLen = Math.floor(this.ctx.sampleRate * dur);
+    const rumbleBuffer = this.ctx.createBuffer(1, rumbleLen, this.ctx.sampleRate);
+    const rData = rumbleBuffer.getChannelData(0);
+    for (let i = 0; i < rumbleLen; i++) {
+      const t = i / this.ctx.sampleRate;
+      const env = t < 0.22 ? (t / 0.22) : Math.exp(-(t - 0.22) / 1.15);
+      rData[i] = (Math.random() * 2 - 1) * env;
+    }
+    const rSrc = this.ctx.createBufferSource();
+    rSrc.buffer = rumbleBuffer;
+
+    const rFilter = this.ctx.createBiquadFilter();
+    rFilter.type = 'lowpass';
+    rFilter.frequency.setValueAtTime(160, now);
+    rFilter.frequency.exponentialRampToValueAtTime(38, now + dur);
+
+    const rGain = this.ctx.createGain();
+    rGain.gain.setValueAtTime(0.55 / distance, now);
+    rGain.gain.exponentialRampToValueAtTime(0.001, now + dur - 0.05);
+
+    rSrc.connect(rFilter);
+    rFilter.connect(rGain);
+    rGain.connect(panner);
+    rSrc.start(now + 0.04);
+
+    // Sub oscillator vibration
+    const subOsc = this.ctx.createOscillator();
+    const subGain = this.ctx.createGain();
+    subOsc.type = 'sine';
+    subOsc.frequency.setValueAtTime(58, now + 0.04);
+    subOsc.frequency.exponentialRampToValueAtTime(22, now + dur * 0.7);
+
+    subGain.gain.setValueAtTime(0.38 / distance, now + 0.04);
+    subGain.gain.exponentialRampToValueAtTime(0.001, now + dur * 0.7);
+
+    subOsc.connect(subGain);
+    subGain.connect(this.masterGain);
+    subOsc.start(now + 0.04);
+    subOsc.stop(now + dur * 0.7 + 0.08);
+  }
+
+  // --- Floorboard Creak / Footstep Feedback ---
+  playFootstepCreak() {
+    if (!this.ctx || !this.masterGain || this.isMuted) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sawtooth';
+    const baseFreq = 110 + Math.random() * 60;
+    osc.frequency.setValueAtTime(baseFreq, now);
+    osc.frequency.exponentialRampToValueAtTime(baseFreq * (0.8 + Math.random() * 0.35), now + 0.065);
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(420, now);
+    filter.Q.setValueAtTime(3.0, now);
+
+    gain.gain.setValueAtTime(0.06 + Math.random() * 0.04, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.075);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(now);
+    osc.stop(now + 0.08);
+  }
+
+  // --- Soviet Military Radio R-326 Broadcasts ---
+  setRadioChannel(ch) {
+    this.currentRadioChannel = ch;
+    if (this.radioInterval) {
+      clearInterval(this.radioInterval);
+      clearTimeout(this.radioInterval);
+      this.radioInterval = null;
+    }
+
+    if (!this.ctx || !this.masterGain || this.isMuted || ch === 0) return;
+
+    const panner = this.panners.radio || this.masterGain;
+
+    if (ch === 1) {
+      // UVB-76 "The Buzzer" (Russian military numbers station 4625 kHz)
+      const playBuzz = () => {
+        if (!this.ctx || this.currentRadioChannel !== 1) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(378, now);
+        osc.frequency.exponentialRampToValueAtTime(365, now + 0.85);
+
+        // AM pulse
+        const lfo = this.ctx.createOscillator();
+        const lfoGain = this.ctx.createGain();
+        lfo.type = 'square';
+        lfo.frequency.setValueAtTime(24, now);
+        lfoGain.gain.setValueAtTime(0.45, now);
+        lfo.connect(gain.gain);
+        lfo.start(now);
+        lfo.stop(now + 0.85);
+
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.88);
+
+        osc.connect(gain);
+        gain.connect(panner);
+        osc.start(now);
+        osc.stop(now + 0.89);
+      };
+
+      playBuzz();
+      this.radioInterval = setInterval(playBuzz, 1380);
+    } else if (ch === 2) {
+      // Morse Code SOS (... --- ...)
+      const pattern = [
+        0.1, 0.1, 0.1, 0.1, 0.1, 0.28,
+        0.28, 0.1, 0.28, 0.1, 0.28, 0.28,
+        0.1, 0.1, 0.1, 0.1, 0.1, 1.4
+      ];
+
+      let pIdx = 0;
+      const playBeep = (dur) => {
+        if (!this.ctx || this.currentRadioChannel !== 2) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(740, now);
+
+        gain.gain.setValueAtTime(0.16, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + dur - 0.015);
+
+        osc.connect(gain);
+        gain.connect(panner);
+        osc.start(now);
+        osc.stop(now + dur);
+      };
+
+      const stepMorse = () => {
+        if (this.currentRadioChannel !== 2) return;
+        const dur = pattern[pIdx];
+        const isBeep = pIdx % 2 === 0;
+        if (isBeep) {
+          playBeep(dur);
+        }
+        pIdx = (pIdx + 1) % pattern.length;
+        this.radioInterval = setTimeout(stepMorse, dur * 1000);
+      };
+
+      stepMorse();
+    } else if (ch === 3) {
+      // Shortwave Static & Whistle
+      const playStatic = () => {
+        if (!this.ctx || this.currentRadioChannel !== 3) return;
+        const now = this.ctx.currentTime;
+        const buf = this.ctx.createBuffer(1, Math.floor(this.ctx.sampleRate * 0.45), this.ctx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < data.length; i++) {
+          data[i] = (Math.random() * 2 - 1) * 0.14;
+        }
+        const src = this.ctx.createBufferSource();
+        src.buffer = buf;
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+        src.connect(gain);
+        gain.connect(panner);
+        src.start(now);
+      };
+
+      playStatic();
+      this.radioInterval = setInterval(playStatic, 580);
+    }
   }
 
   setThreatLevel(threat) {

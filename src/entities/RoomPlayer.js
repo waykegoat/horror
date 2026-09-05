@@ -24,6 +24,7 @@ export class RoomPlayer {
 
     this.onMouseMove = null;
     this.onFlashlightToggle = null;
+    this.onFootstep = null;
 
     // Tactical Handheld Spotlight Flashlight
     this.isFlashlightOn = false;
@@ -114,11 +115,20 @@ export class RoomPlayer {
     this.position.x = Math.max(-2.6, Math.min(2.6, this.position.x));
     this.position.z = Math.max(-2.6, Math.min(2.6, this.position.z));
 
-    // Head bob calculation
+    // Head bob calculation and rhythmic footstep trigger
     const currentSpeed = this.velocity.length();
-    if (currentSpeed > 0.3) {
-      this.headBobTimer += delta * 9;
-      this.position.y = this.baseCameraY + Math.sin(this.headBobTimer) * 0.03;
+    if (currentSpeed > 0.35) {
+      const prevSine = Math.sin(this.headBobTimer);
+      this.headBobTimer += delta * 8.5;
+      const curSine = Math.sin(this.headBobTimer);
+      this.position.y = this.baseCameraY + curSine * 0.035;
+
+      // Trigger footstep creak on downward impact
+      if (prevSine > -0.65 && curSine <= -0.65) {
+        if (this.onFootstep) {
+          this.onFootstep();
+        }
+      }
     } else {
       this.position.y = THREE.MathUtils.lerp(this.position.y, this.baseCameraY, delta * 8);
     }
