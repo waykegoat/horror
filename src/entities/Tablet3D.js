@@ -43,6 +43,8 @@ export class Tablet3D {
     this.currentPos = this.defaultPos.clone();
     this.currentRot = this.defaultRot.clone();
 
+    this.onToggleInspect = null;
+
     this.build3DModel();
     this.camera.add(this.group);
 
@@ -50,9 +52,17 @@ export class Tablet3D {
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Tab' || e.code === 'KeyQ') {
         e.preventDefault();
-        this.isInspecting = !this.isInspecting;
+        this.toggleInspect();
       }
     });
+  }
+
+  toggleInspect() {
+    this.isInspecting = !this.isInspecting;
+    if (this.onToggleInspect) {
+      this.onToggleInspect(this.isInspecting);
+    }
+    return this.isInspecting;
   }
 
   build3DModel() {

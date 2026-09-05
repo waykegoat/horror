@@ -23,13 +23,39 @@ export class RoomPlayer {
     this.shakeIntensity = 0;
 
     this.onMouseMove = null;
+    this.onFlashlightToggle = null;
+
+    // Tactical Handheld Spotlight Flashlight
+    this.isFlashlightOn = false;
+    this.flashlight = new THREE.SpotLight(0xffeedd, 0, 14, Math.PI / 6.5, 0.45, 1.8);
+    this.flashlight.position.set(0.16, -0.14, -0.05);
+    this.flashlight.target.position.set(0, 0, -5);
+    this.flashlight.castShadow = true;
+    this.flashlight.shadow.mapSize.width = 1024;
+    this.flashlight.shadow.mapSize.height = 1024;
+    this.flashlight.shadow.bias = -0.001;
+
+    this.camera.add(this.flashlight);
+    this.camera.add(this.flashlight.target);
 
     this.setupDesktopInputs();
+  }
+
+  toggleFlashlight() {
+    this.isFlashlightOn = !this.isFlashlightOn;
+    this.flashlight.intensity = this.isFlashlightOn ? 3.2 : 0;
+    if (this.onFlashlightToggle) {
+      this.onFlashlightToggle(this.isFlashlightOn);
+    }
+    return this.isFlashlightOn;
   }
 
   setupDesktopInputs() {
     window.addEventListener('keydown', (e) => {
       this.keys[e.code] = true;
+      if (e.code === 'KeyF') {
+        this.toggleFlashlight();
+      }
     });
 
     window.addEventListener('keyup', (e) => {

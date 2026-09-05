@@ -1107,6 +1107,9 @@ html, body {
   bottom: 30px;
   right: 30px;
   pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .mobile-btn {

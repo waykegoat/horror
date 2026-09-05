@@ -98,6 +98,16 @@ export class Game {
     this.player.onMouseMove = (mx, my) => {
       this.tablet.addMouseSway(mx, my);
     };
+
+    this.player.onFlashlightToggle = (on) => {
+      this.audio.playFlashlightClick();
+      this.showSubtitle(on ? 'Фонарь: ВКЛ [F]' : 'Фонарь: ВЫКЛ [F]', 1500);
+    };
+
+    this.tablet.onToggleInspect = (isInspecting) => {
+      this.audio.playTabletHolster(isInspecting);
+      this.showSubtitle(isInspecting ? 'Планшет поднят [TAB/Q]' : 'Планшет опущен [TAB/Q]', 1200);
+    };
   }
 
   // --- SPATIAL 3D WORLD MARKERS OVER INTERACTIVE OBJECTS ---
@@ -186,6 +196,7 @@ export class Game {
     this.isDying = false;
 
     // Reset room
+    this.room.hideJumpscareApparition();
     this.room.setTVState(false);
     this.room.setWindowMonster(false);
     this.room.isDoorLatched = false;
@@ -667,6 +678,9 @@ export class Game {
     if (this.isDying) return;
     this.isDying = true;
 
+    // Show 3D terrifying apparition directly in front of camera
+    this.room.showJumpscareApparition(this.camera);
+
     // 1. Violent camera jolt and scream audio
     this.player.triggerCameraShake(1.0);
     this.audio.playJumpscare();
@@ -818,16 +832,19 @@ export class Game {
 
     bindClick('btn-menu-from-death', () => {
       this.state = 'MENU';
+      this.room.hideJumpscareApparition();
       this.showScreenView('screen-main-menu');
     });
 
     bindClick('btn-menu-from-victory', () => {
       this.state = 'MENU';
+      this.room.hideJumpscareApparition();
       this.showScreenView('screen-main-menu');
     });
 
     bindClick('btn-menu-from-pause', () => {
       this.state = 'MENU';
+      this.room.hideJumpscareApparition();
       this.showScreenView('screen-main-menu');
     });
 
@@ -899,7 +916,14 @@ export class Game {
     document.getElementById('btn-touch-tablet')?.addEventListener('touchstart', (e) => {
       e.preventDefault();
       if (this.tablet) {
-        this.tablet.isInspecting = !this.tablet.isInspecting;
+        this.tablet.toggleInspect();
+      }
+    });
+
+    document.getElementById('btn-touch-flashlight')?.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (this.player) {
+        this.player.toggleFlashlight();
       }
     });
   }

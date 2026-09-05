@@ -187,6 +187,9 @@ export class RoomScene {
     // 6. Particle Systems (Dust motes & Cigarette smoke)
     this.setupDustParticles();
     this.setupSmokeParticles();
+
+    // 7. 3D Jumpscare Apparition Model
+    this.setupJumpscareApparition();
   }
 
   createWall(x, y, z, width, height, depth, material) {
@@ -981,11 +984,12 @@ export class RoomScene {
       }
     } else {
       this.isBlackout = false;
-      this.chandelierLight.intensity = 2.5;
+      const mainsHum = Math.sin(time * 62.83) * 0.05 + Math.sin(time * 125.66) * 0.025;
+      this.chandelierLight.intensity = 2.5 + mainsHum;
       this.filamentMesh.material.color.setHex(0xffeedd);
       this.ambientLight.intensity = 0.72;
       this.emergencyRedLight.intensity = 0;
-      if (this.volumetricCone) this.volumetricCone.material.opacity = 0.28;
+      if (this.volumetricCone) this.volumetricCone.material.opacity = 0.28 + mainsHum * 0.04;
     }
 
     // 4. TV Screen update when on
@@ -1086,6 +1090,91 @@ export class RoomScene {
       this.sunlight.castShadow = true;
       this.scene.add(this.sunlight);
       this.scene.add(this.sunlight.target);
+    }
+  }
+
+  // --- 3D Jumpscare Terrifying Apparition Model ---
+  setupJumpscareApparition() {
+    this.jumpscareEntity = new THREE.Group();
+    this.jumpscareEntity.visible = false;
+
+    // Torso / robe
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x06080a, roughness: 0.95 });
+    const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.14, 1.3, 12), bodyMat);
+    torso.position.y = -0.45;
+    this.jumpscareEntity.add(torso);
+
+    // Contorted elongated head
+    const headMat = new THREE.MeshStandardMaterial({ color: 0x13171a, roughness: 0.75 });
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), headMat);
+    head.scale.set(0.85, 1.35, 1.0);
+    this.jumpscareEntity.add(head);
+
+    // Gaping screaming lower jaw
+    const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.14, 0.2), headMat);
+    jaw.position.set(0, -0.18, 0.09);
+    jaw.rotation.x = Math.PI / 7;
+    this.jumpscareEntity.add(jaw);
+
+    // Sharp needle teeth
+    const toothMat = new THREE.MeshBasicMaterial({ color: 0xffffee });
+    for (let i = 0; i < 7; i++) {
+      const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.045, 4), toothMat);
+      tooth.position.set((i - 3) * 0.024, -0.12, 0.16);
+      tooth.rotation.x = Math.PI;
+      this.jumpscareEntity.add(tooth);
+    }
+
+    // Glowing red sunken eyes
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.028, 8, 8), eyeMat);
+    eyeL.position.set(-0.065, 0.06, 0.14);
+    this.jumpscareEntity.add(eyeL);
+
+    const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.028, 8, 8), eyeMat);
+    eyeR.position.set(0.065, 0.06, 0.14);
+    this.jumpscareEntity.add(eyeR);
+
+    // Eye red pointlight glow
+    const eyeLight = new THREE.PointLight(0xff0000, 3.5, 3.0, 2);
+    eyeLight.position.set(0, 0.06, 0.22);
+    this.jumpscareEntity.add(eyeLight);
+
+    // Outstretched reaching skeletal arms with long claws
+    const armMat = new THREE.MeshStandardMaterial({ color: 0x0c0f12, roughness: 0.9 });
+    const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.02, 0.9, 8), armMat);
+    armL.rotation.x = Math.PI / 2 - 0.25;
+    armL.rotation.y = -0.35;
+    armL.position.set(-0.28, -0.15, 0.38);
+    this.jumpscareEntity.add(armL);
+
+    const armR = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.02, 0.9, 8), armMat);
+    armR.rotation.x = Math.PI / 2 - 0.25;
+    armR.rotation.y = 0.35;
+    armR.position.set(0.28, -0.15, 0.38);
+    this.jumpscareEntity.add(armR);
+
+    this.scene.add(this.jumpscareEntity);
+  }
+
+  showJumpscareApparition(camera) {
+    if (!this.jumpscareEntity) return;
+
+    const camPos = camera.position.clone();
+    const camDir = new THREE.Vector3();
+    camera.getWorldDirection(camDir);
+
+    const targetPos = camPos.add(camDir.multiplyScalar(0.65));
+    targetPos.y -= 0.05;
+
+    this.jumpscareEntity.position.copy(targetPos);
+    this.jumpscareEntity.lookAt(camera.position);
+    this.jumpscareEntity.visible = true;
+  }
+
+  hideJumpscareApparition() {
+    if (this.jumpscareEntity) {
+      this.jumpscareEntity.visible = false;
     }
   }
 }
