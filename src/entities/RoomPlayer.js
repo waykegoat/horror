@@ -33,8 +33,8 @@ export class RoomPlayer {
     this.flashlight.position.set(0.16, -0.14, -0.05);
     this.flashlight.target.position.set(0, 0, -5);
     this.flashlight.castShadow = true;
-    this.flashlight.shadow.mapSize.width = 1024;
-    this.flashlight.shadow.mapSize.height = 1024;
+    this.flashlight.shadow.mapSize.width = 512;
+    this.flashlight.shadow.mapSize.height = 512;
     this.flashlight.shadow.bias = -0.001;
 
     this.camera.add(this.flashlight);
@@ -75,25 +75,61 @@ export class RoomPlayer {
   }
 
   setupDesktopInputs() {
-    window.addEventListener('keydown', (e) => {
-      this.keys[e.code] = true;
-      if (e.code === 'KeyF') {
-        this.toggleFlashlight();
+    let isMouseDown = false;
+    let lastClientX = 0;
+    let lastClientY = 0;
+
+    window.addEventListener('mousedown', (e) => {
+      if (e.button === 0) {
+        isMouseDown = true;
+        lastClientX = e.clientX;
+        lastClientY = e.clientY;
       }
     });
 
-    window.addEventListener('keyup', (e) => {
-      this.keys[e.code] = false;
+    window.addEventListener('mouseup', () => {
+      isMouseDown = false;
     });
 
+    const setKey = (e, isDown) => {
+      if (e.code) this.keys[e.code] = isDown;
+      const k = (e.key || '').toLowerCase();
+      if (k === 'w' || k === 'ц') this.keys['KeyW'] = isDown;
+      if (k === 's' || k === 'ы') this.keys['KeyS'] = isDown;
+      if (k === 'a' || k === 'ф') this.keys['KeyA'] = isDown;
+      if (k === 'd' || k === 'в') this.keys['KeyD'] = isDown;
+      if (isDown && (k === 'f' || k === 'а')) {
+        this.toggleFlashlight();
+      }
+    };
+
+    window.addEventListener('keydown', (e) => setKey(e, true));
+    window.addEventListener('keyup', (e) => setKey(e, false));
+
     window.addEventListener('mousemove', (e) => {
+      let dx = 0;
+      let dy = 0;
+
       if (document.pointerLockElement) {
-        this.yaw -= e.movementX * this.mouseSensitivity;
-        this.pitch -= e.movementY * this.mouseSensitivity;
+        dx = e.movementX || e.mozMovementX || e.webkitMovementX || 0;
+        dy = e.movementY || e.mozMovementY || e.webkitMovementY || 0;
+      } else if (isMouseDown) {
+        dx = e.clientX - lastClientX;
+        dy = e.clientY - lastClientY;
+        lastClientX = e.clientX;
+        lastClientY = e.clientY;
+      }
+
+      if (dx !== 0 || dy !== 0) {
+        dx = Math.max(-120, Math.min(120, dx));
+        dy = Math.max(-120, Math.min(120, dy));
+
+        this.yaw -= dx * this.mouseSensitivity;
+        this.pitch -= dy * this.mouseSensitivity;
         this.pitch = Math.max(-Math.PI * 0.42, Math.min(Math.PI * 0.42, this.pitch));
 
         if (this.onMouseMove) {
-          this.onMouseMove(e.movementX, e.movementY);
+          this.onMouseMove(dx, dy);
         }
       }
     });

@@ -94,8 +94,8 @@ export class RoomScene {
     this.chandelierLight = new THREE.PointLight(0xffe6bd, 2.5, 16, 1.4);
     this.chandelierLight.position.set(0, 2.72, 0);
     this.chandelierLight.castShadow = true;
-    this.chandelierLight.shadow.mapSize.width = 2048;
-    this.chandelierLight.shadow.mapSize.height = 2048;
+    this.chandelierLight.shadow.mapSize.width = 512;
+    this.chandelierLight.shadow.mapSize.height = 512;
     this.chandelierLight.shadow.bias = -0.001;
     this.scene.add(this.chandelierLight);
 
@@ -104,13 +104,13 @@ export class RoomScene {
     this.emergencyRedLight.position.set(0, 2.9, 0);
     this.scene.add(this.emergencyRedLight);
 
-    // Outdoor Thunderstorm Lightning (casts room-spanning tree & window frame shadows)
+    // Outdoor Thunderstorm Lightning (casts room-spanning tree & window frame shadows on active flash)
     this.lightningLight = new THREE.DirectionalLight(0xddeeff, 0);
     this.lightningLight.position.set(-6.5, 3.2, 0);
     this.lightningLight.target.position.set(0, 1.2, 0);
-    this.lightningLight.castShadow = true;
-    this.lightningLight.shadow.mapSize.width = 1024;
-    this.lightningLight.shadow.mapSize.height = 1024;
+    this.lightningLight.castShadow = false;
+    this.lightningLight.shadow.mapSize.width = 512;
+    this.lightningLight.shadow.mapSize.height = 512;
     this.lightningLight.shadow.bias = -0.001;
     this.scene.add(this.lightningLight);
     this.scene.add(this.lightningLight.target);
@@ -806,7 +806,7 @@ export class RoomScene {
 
     this.deskLight = new THREE.PointLight(0xffdf99, 1.5, 5, 2);
     this.deskLight.position.set(0.1, 1.0, -0.7);
-    this.deskLight.castShadow = true;
+    this.deskLight.castShadow = false;
     deskGroup.add(this.deskLight);
 
     // Soviet Rotary Telephone "ТА-68"
@@ -1270,10 +1270,13 @@ export class RoomScene {
       this.tvLight.intensity = 1.8 + Math.random() * 0.9;
     }
 
-    // 5. Desk Surveillance Monitor Live Radar & Telemetry
+    // 5. Desk Surveillance Monitor Live Radar & Telemetry (throttled at 10 FPS)
     if (gameData) {
-      this.renderDeskTerminal(gameData, time);
-      this.terminalTexture.needsUpdate = true;
+      if (!this.lastTerminalUpdate || (time - this.lastTerminalUpdate > 0.1)) {
+        this.lastTerminalUpdate = time;
+        this.renderDeskTerminal(gameData, time);
+        this.terminalTexture.needsUpdate = true;
+      }
     }
 
     // 6. Industrial Ventilation Fan Rotation
@@ -1285,20 +1288,26 @@ export class RoomScene {
     this.lightningTimer -= delta;
     if (this.lightningTimer <= 0) {
       this.triggerLightning();
-      this.lightningTimer = 16.0 + Math.random() * 22.0;
+      this.lightningTimer = 18.0 + Math.random() * 22.0;
     }
 
     if (this.lightningIntensity > 0.001) {
       this.lightningFlashStep += delta * 16.0;
       const strobe = (Math.sin(this.lightningFlashStep * 4.5) > 0 ? 1.0 : 0.25) * Math.exp(-this.lightningFlashStep * 0.35);
       this.lightningIntensity = Math.max(0, strobe);
-      if (this.lightningLight) this.lightningLight.intensity = this.lightningIntensity * 5.2;
+      if (this.lightningLight) {
+        this.lightningLight.intensity = this.lightningIntensity * 5.2;
+        this.lightningLight.castShadow = this.lightningIntensity > 0.2;
+      }
     } else {
-      if (this.lightningLight) this.lightningLight.intensity = 0;
+      if (this.lightningLight) {
+        this.lightningLight.intensity = 0;
+        this.lightningLight.castShadow = false;
+      }
     }
 
-    // Window Texture update (animated rain rivulets & lightning flash) throttled at ~20fps
-    if (time - this.lastWindowUpdate > 0.048) {
+    // Window Texture update throttled at 12 FPS
+    if (!this.lastWindowUpdate || (time - this.lastWindowUpdate > 0.08)) {
       this.lastWindowUpdate = time;
       TextureGenerator.drawWindow(this.windowCanvas, this.hasMonsterAtWindow, time, this.lightningIntensity);
       this.windowTexture.needsUpdate = true;

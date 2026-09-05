@@ -19,6 +19,7 @@ export class Game {
     this.scene.fog = new THREE.FogExp2(0x0e1319, 0.012);
 
     this.camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.05, 40);
+    this.scene.add(this.camera);
     this.clock = new THREE.Clock();
 
     this.renderer = new THREE.WebGLRenderer({
@@ -27,7 +28,7 @@ export class Game {
       powerPreference: 'high-performance'
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -241,8 +242,10 @@ export class Game {
   }
 
   requestPointerLock() {
-    if (!('ontouchstart' in window)) {
+    try {
       this.canvas.requestPointerLock?.();
+    } catch (e) {
+      // browser gesture restriction fallback
     }
   }
 
@@ -878,9 +881,10 @@ export class Game {
       this.interact();
     });
 
-    // Interaction Key: [E] and Pause: [Escape]
+    // Interaction Key: [E] / [У] and Pause: [Escape]
     window.addEventListener('keydown', (e) => {
-      if (e.code === 'KeyE') {
+      const k = (e.key || '').toLowerCase();
+      if (e.code === 'KeyE' || k === 'e' || k === 'у') {
         this.interact();
       } else if (e.code === 'Escape') {
         if (this.state === 'PLAYING') {
@@ -891,10 +895,12 @@ export class Game {
       }
     });
 
-    // Re-lock mouse on canvas click
-    this.canvas.addEventListener('click', () => {
+    // Re-lock mouse on ANY click anywhere on the screen during gameplay
+    window.addEventListener('click', (e) => {
       if (this.state === 'PLAYING' && !document.pointerLockElement) {
-        this.requestPointerLock();
+        if (!e.target.closest('button') && !e.target.closest('.mobile-btn')) {
+          this.requestPointerLock();
+        }
       }
     });
   }

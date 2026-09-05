@@ -191,9 +191,12 @@ export class Tablet3D {
     this.ecgPoints.shift();
     this.ecgPoints.push(ecgSample + (Math.random() - 0.5) * 0.08);
 
-    // 5. Draw Live Telemetry Screen
-    this.renderScreen(gameData, time);
-    this.texture.needsUpdate = true;
+    // 5. Draw Live Telemetry Screen (throttled at ~15 FPS to eliminate GPU memory stalls)
+    if (!this.lastScreenUpdate || (time - this.lastScreenUpdate > 0.065)) {
+      this.lastScreenUpdate = time;
+      this.renderScreen(gameData, time);
+      this.texture.needsUpdate = true;
+    }
   }
 
   renderScreen(data, time) {
