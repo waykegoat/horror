@@ -223,15 +223,27 @@ export class Tablet3D {
     ctx.fill();
 
     ctx.fillStyle = '#00ff77';
-    ctx.font = 'bold 20px monospace';
+    ctx.font = 'bold 18px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText('ДОЗОР-4 // ПОСТ 104 [LIVE]', 46, 33);
+    ctx.fillText('ДОЗОР-4 // ПОСТ 104', 44, 33);
 
-    // Hint toggle inspect
-    ctx.fillStyle = '#558866';
-    ctx.font = '14px monospace';
+    // Battery meter in header
+    const battW = 34;
+    const battH = 16;
+    const bx = w - 160;
+    const by = 18;
+    ctx.strokeStyle = '#00aa55';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(bx, by, battW, battH);
+    ctx.fillStyle = '#00aa55';
+    ctx.fillRect(bx + battW, by + 4, 3, 8); // nipple
+    ctx.fillStyle = '#00ff77';
+    ctx.fillRect(bx + 2, by + 2, (battW - 4) * 0.82, battH - 4);
+
+    ctx.fillStyle = '#88c999';
+    ctx.font = '12px monospace';
     ctx.textAlign = 'right';
-    ctx.fillText('[TAB / Q: ОБЗОР]', w - 16, 33);
+    ctx.fillText('12.4V', w - 16, 33);
 
     // Shift Clock 00:00 -> 06:00
     ctx.fillStyle = '#102619';
@@ -334,8 +346,7 @@ export class Tablet3D {
       ctx.fillText(badgeText, bx + 12, by + 54);
     });
 
-    // Bottom ECG Heart Rate Monitor Line
-    const ecgY = 448;
+    // Bottom ECG Heart Rate Monitor & EMF Detector
     ctx.fillStyle = '#06130b';
     ctx.fillRect(20, 412, w - 40, 80);
     ctx.strokeStyle = '#00552b';
@@ -366,6 +377,18 @@ export class Tablet3D {
       if (i === 0) ctx.moveTo(ex, ey);
       else ctx.lineTo(ex, ey);
     }
+    ctx.stroke();
+
+    // Physical Glass Surface Scratches & Micro-Glints
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(35, 110);
+    ctx.lineTo(140, 195);
+    ctx.moveTo(380, 240);
+    ctx.lineTo(470, 310);
+    ctx.moveTo(210, 380);
+    ctx.lineTo(260, 430);
     ctx.stroke();
   }
 }
