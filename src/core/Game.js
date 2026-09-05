@@ -222,6 +222,7 @@ export class Game {
 
     if (this.state === 'PLAYING') {
       this.player.update(delta);
+      this.audio.updateListener(this.camera);
 
       // Prepare live game telemetry packet
       const progress = Math.min(1.0, this.elapsedShiftTime / this.shiftDuration);

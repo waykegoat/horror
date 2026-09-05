@@ -25,6 +25,36 @@ export class HorrorAudio {
 
     this.heartbeatTimer = null;
     this.threatLevel = 0;
+
+    // 3D Spatial Panners
+    this.panners = {
+      tv: null,
+      door: null,
+      window: null,
+      fuse: null
+    };
+  }
+
+  createPanner(x, y, z) {
+    if (!this.ctx) return null;
+    const panner = this.ctx.createPanner();
+    panner.panningModel = 'HRTF';
+    panner.distanceModel = 'inverse';
+    panner.refDistance = 1.8;
+    panner.maxDistance = 18;
+    panner.rolloffFactor = 1.0;
+    panner.coneInnerAngle = 360;
+
+    if (panner.positionX) {
+      panner.positionX.setValueAtTime(x, this.ctx.currentTime);
+      panner.positionY.setValueAtTime(y, this.ctx.currentTime);
+      panner.positionZ.setValueAtTime(z, this.ctx.currentTime);
+    } else {
+      panner.setPosition(x, y, z);
+    }
+
+    panner.connect(this.masterGain);
+    return panner;
   }
 
   init() {
@@ -38,12 +68,42 @@ export class HorrorAudio {
       this.masterGain.gain.setValueAtTime(0.7, this.ctx.currentTime);
       this.masterGain.connect(this.ctx.destination);
 
+      // Initialize 3D Panners for spatial anomalies
+      this.panners.tv = this.createPanner(0, 1.1, 2.8);
+      this.panners.door = this.createPanner(0, 1.3, -3.2);
+      this.panners.window = this.createPanner(-3.2, 1.6, 0);
+      this.panners.fuse = this.createPanner(3.2, 1.6, 1.5);
+
       this.initRoomAmbience();
       this.startHeartbeatSystem();
 
       this.isInitialized = true;
     } catch (e) {
       console.warn('AudioContext failed:', e);
+    }
+  }
+
+  updateListener(camera) {
+    if (!this.ctx || !this.isInitialized) return;
+    const listener = this.ctx.listener;
+    const p = camera.position;
+    const dir = new THREE.Vector3();
+    camera.getWorldDirection(dir);
+    const up = camera.up;
+
+    if (listener.positionX) {
+      listener.positionX.setValueAtTime(p.x, this.ctx.currentTime);
+      listener.positionY.setValueAtTime(p.y, this.ctx.currentTime);
+      listener.positionZ.setValueAtTime(p.z, this.ctx.currentTime);
+      listener.forwardX.setValueAtTime(dir.x, this.ctx.currentTime);
+      listener.forwardY.setValueAtTime(dir.y, this.ctx.currentTime);
+      listener.forwardZ.setValueAtTime(dir.z, this.ctx.currentTime);
+      listener.upX.setValueAtTime(up.x, this.ctx.currentTime);
+      listener.upY.setValueAtTime(up.y, this.ctx.currentTime);
+      listener.upZ.setValueAtTime(up.z, this.ctx.currentTime);
+    } else if (listener.setPosition) {
+      listener.setPosition(p.x, p.y, p.z);
+      listener.setOrientation(dir.x, dir.y, dir.z, up.x, up.y, up.z);
     }
   }
 
@@ -129,7 +189,7 @@ export class HorrorAudio {
 
     this.tvNoiseNode.connect(filter);
     filter.connect(this.tvNoiseGain);
-    this.tvNoiseGain.connect(this.masterGain);
+    this.tvNoiseGain.connect(this.panners.tv || this.masterGain);
 
     this.tvNoiseNode.start();
   }
@@ -149,7 +209,7 @@ export class HorrorAudio {
     }
   }
 
-  // --- Heavy Door Banging ---
+  // --- Heavy Door Banging (Spatial North) ---
   playDoorBang() {
     if (!this.ctx || !this.masterGain || this.isMuted) return;
 
@@ -173,14 +233,14 @@ export class HorrorAudio {
 
       osc.connect(filter);
       filter.connect(gain);
-      gain.connect(this.masterGain);
+      gain.connect(this.panners.door || this.masterGain);
 
       osc.start(t);
       osc.stop(t + 0.17);
     }
   }
 
-  // --- Window Glass Scratching ---
+  // --- Window Glass Scratching (Spatial West) ---
   playWindowScratch() {
     if (!this.ctx || !this.masterGain || this.isMuted) return;
 
@@ -197,13 +257,13 @@ export class HorrorAudio {
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.75);
 
     osc.connect(gain);
-    gain.connect(this.masterGain);
+    gain.connect(this.panners.window || this.masterGain);
 
     osc.start(now);
     osc.stop(now + 0.76);
   }
 
-  // --- Electric Sparks & Zap ---
+  // --- Electric Sparks & Zap (Spatial East) ---
   playSparkZap() {
     if (!this.ctx || !this.masterGain || this.isMuted) return;
 
@@ -221,7 +281,7 @@ export class HorrorAudio {
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
 
       osc.connect(gain);
-      gain.connect(this.masterGain);
+      gain.connect(this.panners.fuse || this.masterGain);
 
       osc.start(t);
       osc.stop(t + 0.06);
@@ -276,7 +336,6 @@ export class HorrorAudio {
     if (!this.ctx || !this.masterGain || this.isMuted) return;
 
     const now = this.ctx.currentTime;
-    // Bright triumphant melodic chime (C - E - G - C5)
     const notes = [523.25, 659.25, 783.99, 1046.50];
     notes.forEach((freq, idx) => {
       const t = now + idx * 0.22;
@@ -327,13 +386,12 @@ export class HorrorAudio {
     osc2.stop(now + 1.2);
   }
 
-  // --- Blackout Power Down Sound ---
+  // --- Blackout Power Down Sound (Spatial East) ---
   playBlackoutPowerDown() {
     if (!this.ctx || !this.masterGain || this.isMuted) return;
 
     const now = this.ctx.currentTime;
 
-    // Heavy relay click
     const click = this.ctx.createOscillator();
     const clickGain = this.ctx.createGain();
     click.type = 'triangle';
@@ -342,11 +400,10 @@ export class HorrorAudio {
     clickGain.gain.setValueAtTime(0.5, now);
     clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
     click.connect(clickGain);
-    clickGain.connect(this.masterGain);
+    clickGain.connect(this.panners.fuse || this.masterGain);
     click.start(now);
     click.stop(now + 0.1);
 
-    // Power turbine spool-down whine
     const whine = this.ctx.createOscillator();
     const whineGain = this.ctx.createGain();
     whine.type = 'sawtooth';
@@ -362,12 +419,12 @@ export class HorrorAudio {
 
     whine.connect(filter);
     filter.connect(whineGain);
-    whineGain.connect(this.masterGain);
+    whineGain.connect(this.panners.fuse || this.masterGain);
     whine.start(now);
     whine.stop(now + 1.7);
   }
 
-  // --- Glass Shatter Sound (Window Breach) ---
+  // --- Glass Shatter Sound (Spatial West) ---
   playGlassShatter() {
     if (!this.ctx || !this.masterGain || this.isMuted) return;
 
@@ -385,13 +442,13 @@ export class HorrorAudio {
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
 
       osc.connect(gain);
-      gain.connect(this.masterGain);
+      gain.connect(this.panners.window || this.masterGain);
       osc.start(t);
       osc.stop(t + 0.32);
     }
   }
 
-  // --- Metal Door Slam / Break-in Sound ---
+  // --- Metal Door Slam (Spatial North) ---
   playMetalGateSlam() {
     if (!this.ctx || !this.masterGain || this.isMuted) return;
 
@@ -407,7 +464,7 @@ export class HorrorAudio {
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
 
     osc.connect(gain);
-    gain.connect(this.masterGain);
+    gain.connect(this.panners.door || this.masterGain);
     osc.start(now);
     osc.stop(now + 0.48);
   }

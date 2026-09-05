@@ -97,6 +97,13 @@ export const VHSShader = {
       // CRT phosphor glass glow
       color += vec3(0.015, 0.02, 0.015);
 
+      // Analog phosphor halation on bright highlights (lights, sparks, filaments)
+      float lum = dot(color, vec3(0.299, 0.587, 0.114));
+      if (lum > 0.58) {
+        float bloom = (lum - 0.58) * 0.35;
+        color += vec3(bloom * 1.15, bloom * 0.95, bloom * 0.65);
+      }
+
       // Soft vignette for CRT glass feel
       float vignette = 1.0 - rDist * 0.25;
       color *= clamp(vignette, 0.75, 1.0);
