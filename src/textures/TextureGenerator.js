@@ -942,6 +942,198 @@ export class TextureGenerator {
   }
 
   /**
+   * --- 11b. SOVIET SAFETY POSTER TEXTURE ---
+   */
+  static createSafetyPosterTexture() {
+    const w = 384;
+    const h = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+
+    // Aged yellowed paper
+    ctx.fillStyle = '#e8dec8';
+    ctx.fillRect(0, 0, w, h);
+
+    // Weathered paper borders
+    ctx.fillStyle = 'rgba(120, 80, 40, 0.18)';
+    ctx.fillRect(0, 0, w, 12);
+    ctx.fillRect(0, h - 12, w, 12);
+    ctx.fillRect(0, 0, 12, h);
+    ctx.fillRect(w - 12, 0, 12, h);
+
+    // Red top header banner
+    ctx.fillStyle = '#b31b1b';
+    ctx.fillRect(16, 16, w - 32, 60);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.fillText('СОВЕРШЕННО СЕКРЕТНО', w / 2, 42);
+    ctx.font = 'bold 12px sans-serif';
+    ctx.fillText('ОБЪЕКТ 104 // ОХРАННЫЙ ПЕРИМЕТР', w / 2, 64);
+
+    // Warning Triangle
+    const cx = w / 2;
+    const cy = 180;
+    ctx.strokeStyle = '#b31b1b';
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 65);
+    ctx.lineTo(cx + 70, cy + 50);
+    ctx.lineTo(cx - 70, cy + 50);
+    ctx.closePath();
+    ctx.stroke();
+
+    // Eyeball / Exclamation symbol in triangle
+    ctx.fillStyle = '#111111';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 5, 28, 16, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#b31b1b';
+    ctx.beginPath();
+    ctx.arc(cx, cy + 5, 10, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Main warning slogan
+    ctx.fillStyle = '#111111';
+    ctx.font = 'bold 24px sans-serif';
+    ctx.fillText('НЕ ПОКИДАТЬ ПОСТ!', w / 2, 275);
+
+    ctx.font = 'bold 13px sans-serif';
+    ctx.fillStyle = '#333333';
+    ctx.fillText('ИНСТРУКЦИЯ ДЕЖУРНОГО ОПЕРАТОРА:', w / 2, 310);
+
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('1. При шуме кинескопа — обесточить телевизор [E].', 36, 340);
+    ctx.fillText('2. При скрипе за стеклом — закрыть бархатные шторы [E].', 36, 365);
+    ctx.fillText('3. При ударах в дверь — немедленно запереть засов [E].', 36, 390);
+    ctx.fillText('4. При искрении щитка — восстановить автомат [E].', 36, 415);
+
+    // Red stamp
+    ctx.strokeStyle = 'rgba(180, 20, 20, 0.7)';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(w - 140, h - 70, 115, 45);
+    ctx.fillStyle = 'rgba(180, 20, 20, 0.7)';
+    ctx.font = 'bold 12px monospace';
+    ctx.fillText('ОТДЕЛ № 9', w - 128, h - 48);
+    ctx.font = '10px monospace';
+    ctx.fillText('ДОПУСК ОГР.', w - 128, h - 34);
+
+    return new THREE.CanvasTexture(canvas);
+  }
+
+  /**
+   * --- 11c. SOVIET 1986 WALL CALENDAR TEXTURE ---
+   */
+  static createCalendarTexture() {
+    const w = 256;
+    const h = 320;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+
+    // White/ivory paper
+    ctx.fillStyle = '#f8f4eb';
+    ctx.fillRect(0, 0, w, h);
+
+    // Top red header
+    ctx.fillStyle = '#c5221f';
+    ctx.fillRect(0, 0, w, 75);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.fillText('СЕНТЯБРЬ 1986', w / 2, 34);
+    ctx.font = '13px sans-serif';
+    ctx.fillText('СУББОТА', w / 2, 58);
+
+    // Big day number
+    ctx.fillStyle = '#c5221f';
+    ctx.font = 'bold 110px serif';
+    ctx.fillText('6', w / 2, 185);
+
+    // Red ballpoint pen handwriting reminder
+    ctx.strokeStyle = 'rgba(200, 30, 30, 0.85)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(w / 2, 150, 68, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = '#9b1b1b';
+    ctx.font = 'italic bold 11px sans-serif';
+    ctx.fillText('СМЕНА 00:00 - 06:00!', w / 2, 235);
+    ctx.fillText('ПРОВЕРИТЬ ЗАСОВ И ЩИТОК!', w / 2, 255);
+
+    ctx.fillStyle = '#555555';
+    ctx.font = '10px serif';
+    ctx.fillText('Восход: 06:00 • Заход: 19:42', w / 2, 290);
+
+    return new THREE.CanvasTexture(canvas);
+  }
+
+  /**
+   * --- 11d. OLD TECHNICAL BOOK SPINES TEXTURE ---
+   */
+  static createBookSpinesTexture() {
+    const w = 512;
+    const h = 256;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+
+    const bookColors = ['#5a181b', '#1a3824', '#1a2b48', '#382818', '#662211', '#283438', '#421a22', '#222d1f'];
+    const titles = [
+      'ГОСТ 12.1.004',
+      'ОХРАНА ТРУДА',
+      'РАДИО Р-326',
+      'ИНСТРУКЦИЯ',
+      'АРХИВ № 104',
+      'ТЕХНИКА СВЯЗИ',
+      'АТЛАС ЭСССР',
+      'ПРАВИЛА ПУЭ'
+    ];
+
+    const bookW = w / bookColors.length;
+
+    for (let i = 0; i < bookColors.length; i++) {
+      const bx = i * bookW;
+
+      // Leatherette spine gradient
+      const grad = ctx.createLinearGradient(bx, 0, bx + bookW, 0);
+      grad.addColorStop(0, '#111');
+      grad.addColorStop(0.2, bookColors[i]);
+      grad.addColorStop(0.8, bookColors[i]);
+      grad.addColorStop(1, '#111');
+      ctx.fillStyle = grad;
+      ctx.fillRect(bx, 0, bookW, h);
+
+      // Gold embossed ribs
+      ctx.fillStyle = '#d4af37';
+      ctx.fillRect(bx + 2, 25, bookW - 4, 3);
+      ctx.fillRect(bx + 2, 32, bookW - 4, 2);
+      ctx.fillRect(bx + 2, h - 35, bookW - 4, 3);
+      ctx.fillRect(bx + 2, h - 28, bookW - 4, 2);
+
+      // Vertical title
+      ctx.save();
+      ctx.translate(bx + bookW / 2, h / 2);
+      ctx.rotate(Math.PI / 2);
+      ctx.fillStyle = '#e5c158';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillText(titles[i], 0, 4);
+      ctx.restore();
+    }
+
+    return new THREE.CanvasTexture(canvas);
+  }
+
+  /**
    * --- 12. PBR HELPER: TANGENT-SPACE NORMAL MAP (Sobel Filter) ---
    */
   static createNormalMapFromCanvas(srcCanvas, strength = 1.8) {

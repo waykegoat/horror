@@ -69,6 +69,9 @@ export class RoomScene {
     this.radioDialTex = null;
     this.onRadioChange = null;
 
+    // Industrial Wall Ventilation Fan
+    this.ventFan = null;
+
     // Particle Systems
     this.dustParticles = null;
     this.dustCoords = null;
@@ -210,6 +213,7 @@ export class RoomScene {
     this.setupFuseBox();
     this.setupDeskAndTerminal();
     this.setupSofaAndClock();
+    this.setupWallProps();
 
     // 6. Particle Systems (Dust motes & Cigarette smoke)
     this.setupDustParticles();
@@ -914,6 +918,124 @@ export class RoomScene {
     this.scene.add(deskGroup);
   }
 
+  setupWallProps() {
+    // 1. Framed Soviet Industrial Safety Poster on North wall (to the right of door)
+    const posterGroup = new THREE.Group();
+    posterGroup.position.set(1.5, 1.85, -3.32);
+
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x221810, roughness: 0.6 });
+    const pFrame = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.94, 0.03), frameMat);
+    posterGroup.add(pFrame);
+
+    const posterMat = new THREE.MeshStandardMaterial({
+      map: TextureGenerator.createSafetyPosterTexture(),
+      roughness: 0.85
+    });
+    const pMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.64, 0.86), posterMat);
+    pMesh.position.z = 0.016;
+    posterGroup.add(pMesh);
+
+    // Glass cover reflection
+    const glassMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.25,
+      roughness: 0.05,
+      metalness: 0.1
+    });
+    const pGlass = new THREE.Mesh(new THREE.PlaneGeometry(0.64, 0.86), glassMat);
+    pGlass.position.z = 0.018;
+    posterGroup.add(pGlass);
+
+    this.scene.add(posterGroup);
+
+    // 2. Soviet 1986 Wall Calendar on East wall next to desk
+    const calMat = new THREE.MeshStandardMaterial({
+      map: TextureGenerator.createCalendarTexture(),
+      roughness: 0.9
+    });
+    const cal = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.5), calMat);
+    cal.position.set(3.32, 1.85, -2.1);
+    cal.rotation.y = -Math.PI / 2;
+    this.scene.add(cal);
+
+    // 3. Bookshelf above the desk on East wall
+    const shelfGroup = new THREE.Group();
+    shelfGroup.position.set(3.28, 2.1, -1.0);
+    shelfGroup.rotation.y = -Math.PI / 2;
+
+    const shelfMat = new THREE.MeshStandardMaterial({ color: 0x3d2311, roughness: 0.7 });
+    const plank = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.035, 0.28), shelfMat);
+    plank.castShadow = true;
+    plank.receiveShadow = true;
+    shelfGroup.add(plank);
+
+    // Metal brackets under shelf
+    const bracketMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8, roughness: 0.3 });
+    const br1 = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.2, 0.25), bracketMat);
+    br1.position.set(-0.6, -0.1, 0);
+    shelfGroup.add(br1);
+
+    const br2 = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.2, 0.25), bracketMat);
+    br2.position.set(0.6, -0.1, 0);
+    shelfGroup.add(br2);
+
+    // Row of Books
+    const booksMat = new THREE.MeshStandardMaterial({
+      map: TextureGenerator.createBookSpinesTexture(),
+      roughness: 0.75
+    });
+    const books = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.26, 0.2), booksMat);
+    books.position.set(0, 0.145, 0);
+    books.castShadow = true;
+    shelfGroup.add(books);
+
+    this.scene.add(shelfGroup);
+
+    // 4. Industrial Ventilation Shaft & Spinning Fan Grille on South wall above TV
+    const ventGroup = new THREE.Group();
+    ventGroup.position.set(0, 2.5, 3.32);
+
+    const ventFrameMat = new THREE.MeshStandardMaterial({ color: 0x222629, metalness: 0.7, roughness: 0.4 });
+    const ventRim = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 0.04), ventFrameMat);
+    ventGroup.add(ventRim);
+
+    // Dark vent duct opening
+    const ductMat = new THREE.MeshBasicMaterial({ color: 0x050709 });
+    const duct = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.6), ductMat);
+    duct.position.z = -0.01;
+    duct.rotation.y = Math.PI;
+    ventGroup.add(duct);
+
+    // 4-blade spinning fan
+    const fanMat = new THREE.MeshStandardMaterial({ color: 0x15181a, metalness: 0.85, roughness: 0.3 });
+    this.ventFan = new THREE.Group();
+    this.ventFan.position.z = -0.005;
+
+    for (let f = 0; f < 4; f++) {
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.24, 0.01), fanMat);
+      blade.position.y = 0.12;
+      const bladeHolder = new THREE.Group();
+      bladeHolder.rotation.z = (f * Math.PI) / 2;
+      bladeHolder.add(blade);
+      this.ventFan.add(bladeHolder);
+    }
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.02, 16), fanMat);
+    hub.rotation.x = Math.PI / 2;
+    this.ventFan.add(hub);
+    ventGroup.add(this.ventFan);
+
+    // Protective wire mesh slats over vent
+    const slatMat = new THREE.MeshStandardMaterial({ color: 0x33383c, metalness: 0.8, roughness: 0.4 });
+    for (let s = -2; s <= 2; s++) {
+      const slat = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.02, 0.01), slatMat);
+      slat.position.set(0, s * 0.1, 0.02);
+      ventGroup.add(slat);
+    }
+
+    this.scene.add(ventGroup);
+  }
+
   drawRadioDial(text, isOn) {
     if (!this.radioDialCtx) return;
     const ctx = this.radioDialCtx;
@@ -1154,7 +1276,12 @@ export class RoomScene {
       this.terminalTexture.needsUpdate = true;
     }
 
-    // 6. Outdoor Thunderstorm Lightning & Rain on Window
+    // 6. Industrial Ventilation Fan Rotation
+    if (this.ventFan) {
+      this.ventFan.rotation.z -= delta * 3.6;
+    }
+
+    // 7. Outdoor Thunderstorm Lightning & Rain on Window
     this.lightningTimer -= delta;
     if (this.lightningTimer <= 0) {
       this.triggerLightning();
